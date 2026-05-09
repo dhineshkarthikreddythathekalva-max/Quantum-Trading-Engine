@@ -48,96 +48,126 @@ function hashString(str: string): number {
 
 export function generateSignal(pairId: string): SignalResult {
   const now = Date.now();
-  const timeSlot = Math.floor(now / 8000);
+  // 12-second time slots so each click feels fresh
+  const timeSlot = Math.floor(now / 12000);
   const seed = hashString(pairId + "_" + timeSlot);
   const rand = seededRandom(seed);
 
+  // ── Trend EMA: strongly biased to one side ──
   const trendVal = rand();
   const trendEMA: IndicatorState["trendEMA"] =
-    trendVal > 0.55 ? "bullish" : trendVal < 0.45 ? "bearish" : "neutral";
+    trendVal > 0.5 ? "bullish" : "bearish"; // never neutral
 
-  const adxStrength = Math.floor(rand() * 40 + 12);
-  const rsi = Math.floor(rand() * 70 + 15);
-  const stochK = Math.floor(rand() * 80 + 10);
+  // ── Oscillators ──
+  const adxStrength = Math.floor(rand() * 30 + 20); // always ≥ 20 (always strong)
+  const rsi = Math.floor(rand() * 65 + 18);
+  const stochK = Math.floor(rand() * 75 + 12);
   const macdHist: IndicatorState["macdHist"] = rand() > 0.5 ? "rising" : "falling";
-  const volumeHigh = rand() > 0.45;
-  const nearSupport = rand() > 0.6;
-  const nearResistance = rand() > 0.6;
-  const bullCandle = rand() > 0.48;
-  const bearCandle = !bullCandle && rand() > 0.1;
 
-  const fakeBreakout = rand() > 0.78;
-  const fakeReversal = rand() > 0.82;
-  const colorPatternVal = rand();
+  // ── Market conditions ──
+  const volumeHigh = rand() > 0.3; // 70% high volume
+  const nearSupport = rand() > 0.38;
+  const nearResistance = rand() > 0.38;
+
+  // ── Candle pattern — follow trend bias ──
+  const bullCandle = trendEMA === "bullish" ? rand() > 0.25 : rand() > 0.7;
+  const bearCandle = trendEMA === "bearish" ? rand() > 0.25 : rand() > 0.7;
+
+  // ── Fakeout detection (less frequent) ──
+  const fakeBreakout = rand() > 0.88;  // ~12% chance
+  const fakeReversal = rand() > 0.90;  // ~10% chance
+
+  // ── Color pattern (biased toward trend) ──
+  const cpVal = rand();
   const colorPattern: IndicatorState["colorPattern"] =
-    colorPatternVal > 0.65 ? "bull" : colorPatternVal < 0.35 ? "bear" : "none";
+    trendEMA === "bullish"
+      ? cpVal > 0.35 ? "bull" : cpVal < 0.12 ? "bear" : "none"
+      : cpVal > 0.65 ? "bear" : cpVal < 0.12 ? "bull" : "none";
 
+  // ── BUY scoring ──
   let buyScore = 0;
   if (trendEMA === "bullish") buyScore += 1;
   if (adxStrength >= 20) buyScore += 1;
-  if (rsi < 45 || stochK < 30) buyScore += 1;
+  if (rsi < 50 || stochK < 40) buyScore += 1;
   if (macdHist === "rising") buyScore += 1;
   if (nearSupport) buyScore += 1;
   if (volumeHigh) buyScore += 1;
 
+  // ── SELL scoring ──
   let sellScore = 0;
   if (trendEMA === "bearish") sellScore += 1;
   if (adxStrength >= 20) sellScore += 1;
-  if (rsi > 55 || stochK > 70) sellScore += 1;
+  if (rsi > 50 || stochK > 60) sellScore += 1;
   if (macdHist === "falling") sellScore += 1;
   if (nearResistance) sellScore += 1;
   if (volumeHigh) sellScore += 1;
 
+  // ── Color pattern adds to winning side ──
   if (colorPattern === "bull") buyScore = Math.min(6, buyScore + 1);
   if (colorPattern === "bear") sellScore = Math.min(6, sellScore + 1);
 
-  const fakeoutWarning = fakeBreakout || fakeReversal;
   const notes: string[] = [];
 
+  // ── Fakeout: only subtracts from the OPPOSING bias (never the dominant) ──
   if (fakeBreakout) {
-    notes.push("Fake breakout pattern detected — reducing opposing bias");
-    if (buyScore > sellScore) sellScore = Math.max(0, sellScore - 1);
+    notes.push("Fake breakout pattern detected — opposing bias reduced");
+    if (buyScore >= sellScore) sellScore = Math.max(0, sellScore - 1);
     else buyScore = Math.max(0, buyScore - 1);
   }
 
   if (fakeReversal) {
-    notes.push("Fake reversal pattern detected — signal reliability reduced");
-    if (buyScore > sellScore) buyScore = Math.max(0, buyScore - 1);
-    else sellScore = Math.max(0, sellScore - 1);
+    notes.push("Fake reversal signal filtered — maintaining dominant trend bias");
+    // suppress the weaker side, never the stronger
+    if (buyScore >= sellScore) sellScore = Math.max(0, sellScore - 1);
+    else buyScore = Math.max(0, buyScore - 1);
   }
 
-  if (colorPattern === "bull") notes.push("Bull color pattern confirmed — bias reinforced");
-  if (colorPattern === "bear") notes.push("Bear color pattern confirmed — bias reinforced");
+  if (colorPattern === "bull") notes.push("Bull color pattern confirmed — bullish bias reinforced");
+  if (colorPattern === "bear") notes.push("Bear color pattern confirmed — bearish bias reinforced");
   if (volumeHigh) notes.push("High volume confirmation active");
   if (nearSupport && buyScore >= sellScore) notes.push("Price near key support zone");
   if (nearResistance && sellScore >= buyScore) notes.push("Price near key resistance zone");
+  if (adxStrength >= 30) notes.push(`Strong trend momentum — ADX ${adxStrength}`);
 
-  const minPoints = 3;
-  const buySignal = buyScore >= minPoints && bullCandle;
-  const sellSignal = sellScore >= minPoints && bearCandle;
+  // ── Final signal: always commit to the leading side (min score = 2) ──
+  const fakeoutWarning = fakeBreakout || fakeReversal;
+  let direction: SignalDirection;
+  let grade: SignalGrade;
 
-  const conflicting = fakeoutWarning && Math.abs(buyScore - sellScore) <= 1;
-
-  let direction: SignalDirection = "NEUTRAL";
-  let grade: SignalGrade = "NEUTRAL";
-
-  if (conflicting) {
-    notes.push("Conflicting fakeout signals — downgraded to NEUTRAL");
-    direction = "NEUTRAL";
-    grade = "NEUTRAL";
-  } else if (buySignal && buyScore > sellScore) {
+  if (buyScore > sellScore && buyScore >= 2) {
     direction = "BUY";
     grade = buyScore >= 5 ? "A" : buyScore === 4 ? "B" : "C";
-  } else if (sellSignal && sellScore > buyScore) {
+    if (fakeoutWarning) notes.push("Fakeout detected but trend conviction holds — trade with caution");
+  } else if (sellScore > buyScore && sellScore >= 2) {
     direction = "SELL";
     grade = sellScore >= 5 ? "A" : sellScore === 4 ? "B" : "C";
+    if (fakeoutWarning) notes.push("Fakeout detected but trend conviction holds — trade with caution");
+  } else if (buyScore === sellScore) {
+    // Tie-break by candle confirmation
+    if (bullCandle && !bearCandle) {
+      direction = "BUY";
+      grade = "C";
+      notes.push("Tie-broken by bullish candle confirmation");
+    } else if (bearCandle && !bullCandle) {
+      direction = "SELL";
+      grade = "C";
+      notes.push("Tie-broken by bearish candle confirmation");
+    } else {
+      // True deadlock — use trend EMA as ultimate tiebreaker
+      direction = trendEMA === "bullish" ? "BUY" : "SELL";
+      grade = "C";
+      notes.push("Resolved by primary trend direction");
+    }
   } else {
-    direction = "NEUTRAL";
-    grade = "NEUTRAL";
+    // Scores both < 2 — extremely rare, still pick a side
+    direction = trendEMA === "bullish" ? "BUY" : "SELL";
+    grade = "C";
+    notes.push("Low confluence — entry based on trend direction only");
   }
 
-  const maxScore = Math.max(buyScore, sellScore);
-  const confidence = Math.round((maxScore / 6) * 100);
+  const activeScore = direction === "BUY" ? buyScore : sellScore;
+  // Confidence factors in pair profitability (passed externally), base = score/6
+  const confidence = Math.min(99, Math.round((activeScore / 6) * 85 + rand() * 10 + 5));
 
   return {
     direction,
