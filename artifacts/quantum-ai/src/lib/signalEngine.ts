@@ -1,5 +1,5 @@
 export type SignalDirection = "BUY" | "SELL" | "NEUTRAL";
-export type SignalGrade = "A" | "B" | "C" | "NEUTRAL";
+export type SignalGrade = "STRONG" | "NEUTRAL" | "WEAK";
 
 export interface IndicatorState {
   trendEMA: "bullish" | "bearish" | "neutral";
@@ -136,32 +136,32 @@ export function generateSignal(pairId: string): SignalResult {
 
   if (buyScore > sellScore && buyScore >= 2) {
     direction = "BUY";
-    grade = buyScore >= 5 ? "A" : buyScore === 4 ? "B" : "C";
+    grade = buyScore >= 5 ? "STRONG" : buyScore === 4 ? "NEUTRAL" : "WEAK";
     if (fakeoutWarning) notes.push("Fakeout detected but trend conviction holds — trade with caution");
   } else if (sellScore > buyScore && sellScore >= 2) {
     direction = "SELL";
-    grade = sellScore >= 5 ? "A" : sellScore === 4 ? "B" : "C";
+    grade = sellScore >= 5 ? "STRONG" : sellScore === 4 ? "NEUTRAL" : "WEAK";
     if (fakeoutWarning) notes.push("Fakeout detected but trend conviction holds — trade with caution");
   } else if (buyScore === sellScore) {
     // Tie-break by candle confirmation
     if (bullCandle && !bearCandle) {
       direction = "BUY";
-      grade = "C";
+      grade = "WEAK";
       notes.push("Tie-broken by bullish candle confirmation");
     } else if (bearCandle && !bullCandle) {
       direction = "SELL";
-      grade = "C";
+      grade = "WEAK";
       notes.push("Tie-broken by bearish candle confirmation");
     } else {
       // True deadlock — use trend EMA as ultimate tiebreaker
       direction = trendEMA === "bullish" ? "BUY" : "SELL";
-      grade = "C";
+      grade = "WEAK";
       notes.push("Resolved by primary trend direction");
     }
   } else {
     // Scores both < 2 — extremely rare, still pick a side
     direction = trendEMA === "bullish" ? "BUY" : "SELL";
-    grade = "C";
+    grade = "WEAK";
     notes.push("Low confluence — entry based on trend direction only");
   }
 

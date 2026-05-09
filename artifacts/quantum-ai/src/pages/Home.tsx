@@ -6,9 +6,19 @@ import {
   Minus, Clock, AlertTriangle, BarChart2, Cpu, Radio, Layers, ChevronRight, Search, X
 } from "lucide-react";
 
+export type Timeframe = "30s" | "1m" | "5m" | "30m";
+
+export const TIMEFRAMES: { id: Timeframe; label: string; long: string }[] = [
+  { id: "30s", label: "30s", long: "30 Seconds" },
+  { id: "1m",  label: "1m",  long: "1 Minute"  },
+  { id: "5m",  label: "5m",  long: "5 Minutes" },
+  { id: "30m", label: "30m", long: "30 Minutes" },
+];
+
 interface SignalHistoryEntry {
   id: string;
   pair: TradingPair;
+  timeframe: Timeframe;
   result: SignalResult;
   timestamp: Date;
 }
@@ -180,15 +190,15 @@ function DirectionBadge({ direction }: { direction: SignalResult["direction"] })
 }
 
 function GradeBadge({ grade }: { grade: SignalResult["grade"] }) {
-  const colors: Record<string, string> = {
-    A: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-    B: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
-    C: "bg-blue-500/20 text-blue-300 border-blue-500/40",
-    NEUTRAL: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  const map: Record<string, { cls: string; label: string }> = {
+    STRONG:  { cls: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40", label: "⚡ Strong" },
+    NEUTRAL: { cls: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",         label: "◈ Neutral" },
+    WEAK:    { cls: "bg-slate-500/20 text-slate-400 border-slate-500/30",      label: "○ Weak" },
   };
+  const { cls, label } = map[grade] ?? map["WEAK"];
   return (
-    <span className={`text-xs font-bold px-2 py-0.5 rounded border ${colors[grade]}`}>
-      {grade === "NEUTRAL" ? "—" : `Grade ${grade}`}
+    <span className={`text-xs font-bold px-2 py-0.5 rounded border ${cls}`}>
+      {label}
     </span>
   );
 }
@@ -226,28 +236,32 @@ function IndicatorRow({
 /* ── Main Page ── */
 export default function Home() {
   const [selectedPair, setSelectedPair] = useState<TradingPair | null>(null);
+  const [selectedTf, setSelectedTf] = useState<Timeframe>("1m");
   const [currentSignal, setCurrentSignal] = useState<SignalResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [history, setHistory] = useState<SignalHistoryEntry[]>([]);
   const historyRef = useRef<HTMLDivElement>(null);
+
+  const activeTf = TIMEFRAMES.find((t) => t.id === selectedTf)!;
 
   const handleGetSignal = useCallback(() => {
     if (!selectedPair || isAnalyzing) return;
     setIsAnalyzing(true);
     setCurrentSignal(null);
     setTimeout(() => {
-      const result = generateSignal(selectedPair.id);
+      const result = generateSignal(selectedPair.id + "_" + selectedTf);
       setCurrentSignal(result);
       setIsAnalyzing(false);
       const entry: SignalHistoryEntry = {
         id: `${Date.now()}-${Math.random()}`,
         pair: selectedPair,
+        timeframe: selectedTf,
         result,
         timestamp: new Date(),
       };
       setHistory((prev) => [entry, ...prev].slice(0, 100));
     }, 1400);
-  }, [selectedPair, isAnalyzing]);
+  }, [selectedPair, selectedTf, isAnalyzing]);
 
   const ind = currentSignal?.indicators;
 
@@ -272,7 +286,7 @@ export default function Home() {
                   Pro
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5">Quotex 1-Min Signal Intelligence</p>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5">Quotex Multi-Timeframe Signal Intelligence</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -280,9 +294,9 @@ export default function Home() {
               <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
               <span className="text-emerald-400 font-semibold">LIVE</span>
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400">
-              <Clock className="w-3.5 h-3.5" />
-              <span>1-Min</span>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/8">
+              <Clock className="w-3.5 h-3.5 text-cyan-500" />
+              <span className="font-semibold text-cyan-300">{activeTf.long}</span>
             </div>
           </div>
         </div>
@@ -317,29 +331,48 @@ export default function Home() {
               />
             </div>
 
+            {/* Timeframe selector */}
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono mb-2">Select Timeframe</p>
+              <div className="grid grid-cols-4 gap-2">
+                {TIMEFRAMES.map((tf) => (
+                  <button
+                    key={tf.id}
+                    onClick={() => { setSelectedTf(tf.id); setCurrentSignal(null); }}
+                    className={`py-2.5 rounded-xl text-sm font-bold border transition-all duration-180 ${
+                      selectedTf === tf.id
+                        ? "border-cyan-500/70 bg-cyan-500/15 text-cyan-300 shadow-[0_0_14px_hsl(186_100%_50%/0.2)]"
+                        : "border-white/10 bg-white/4 text-slate-400 hover:border-white/20 hover:text-slate-300"
+                    }`}
+                  >
+                    <span className="block font-mono">{tf.label}</span>
+                    <span className="block text-[9px] font-normal mt-0.5 opacity-60">{tf.long}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Selected pair info strip */}
             {selectedPair && (
-              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/4 border border-white/8">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Pair</p>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-black text-white">{selectedPair.name}</span>
-                      {selectedPair.isOTC && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">OTC</span>
-                      )}
-                    </div>
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/4 border border-white/8 flex-wrap">
+                <div>
+                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Pair</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-black text-white">{selectedPair.name}</span>
+                    {selectedPair.isOTC && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">OTC</span>
+                    )}
                   </div>
-                  <div className="w-px h-8 bg-white/8" />
-                  <div>
-                    <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Timeframe</p>
-                    <p className="text-sm font-bold text-white">1 Min</p>
-                  </div>
-                  <div className="w-px h-8 bg-white/8" />
-                  <div>
-                    <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Profitability</p>
-                    <p className="text-sm font-bold text-cyan-400">{selectedPair.profitability}%</p>
-                  </div>
+                </div>
+                <div className="w-px h-8 bg-white/8" />
+                <div>
+                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Timeframe</p>
+                  <p className="text-sm font-bold text-cyan-300">{activeTf.long}</p>
+                </div>
+                <div className="w-px h-8 bg-white/8" />
+                <div>
+                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Profitability</p>
+                  <p className="text-sm font-bold text-cyan-400">{selectedPair.profitability}%</p>
                 </div>
               </div>
             )}
@@ -546,6 +579,9 @@ export default function Home() {
                             {entry.pair.isOTC && (
                               <span className="text-[9px] text-violet-400 font-bold">OTC</span>
                             )}
+                            <span className="text-[9px] text-cyan-600 font-mono font-bold bg-cyan-500/10 px-1 rounded">
+                              {entry.timeframe}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <HistoryDirectionText direction={entry.result.direction} />
