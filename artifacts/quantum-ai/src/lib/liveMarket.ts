@@ -1,8 +1,25 @@
 import { useState, useEffect, useRef } from "react";
 
+export interface MagicV {
+  detected: boolean;
+  direction: "bull" | "bear" | null;
+  strength: "strong" | "moderate" | null;
+  depth: number;   // % depth of the V
+}
+
+export interface SRZones {
+  support: number;
+  resistance: number;
+  nearSupport: boolean;
+  nearResistance: boolean;
+  bounceFromSupport: boolean;
+  bounceFromResistance: boolean;
+}
+
 export interface LiveMarketState {
   price: number;
-  priceChange: number;       // % change vs last tick
+  priceChange: number;
+  priceHistory: number[];        // last 20 ticks
   trend: "bullish" | "bearish";
   momentum: "strong" | "normal" | "weak";
   volatility: "high" | "medium" | "low";
@@ -10,7 +27,9 @@ export interface LiveMarketState {
   sessionBias: "bullish" | "bearish" | "neutral";
   bbPosition: "above_upper" | "near_upper" | "middle" | "near_lower" | "below_lower";
   emaCross: "golden" | "death" | "none";
-  roc: number;               // rate of change
+  roc: number;
+  magicV: MagicV;
+  sr: SRZones;
   lastSync: Date;
   syncCount: number;
 }
@@ -41,96 +60,169 @@ function seededRand(seed: number) {
     return (s >>> 0) / 0xffffffff;
   };
 }
-
 function hashStr(str: string) {
   let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = (h << 5) - h + str.charCodeAt(i);
-    h = h & h;
-  }
+  for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h = h & h; }
   return Math.abs(h);
 }
 
-export function computeMarketState(pairId: string, syncCount: number): Omit<LiveMarketState, "lastSync" | "syncCount"> {
+/** Build a deterministic price history for a pair up to syncCount */
+function buildPriceHistory(pairId: string, syncCount: number, count = 20): number[] {
   const base = BASE_PRICES[pairId] ?? BASE_PRICES.default;
-  // Use overlapping windows so each tick builds on previous for continuity
-  const seed1 = hashStr(pairId + "_tick_" + syncCount);
-  const seed2 = hashStr(pairId + "_tick_" + (syncCount - 1));
-  const r1 = seededRand(seed1);
-  const r2 = seededRand(seed2);
+  const history: number[] = [];
+  let offset = 0;
+  const start = Math.max(0, syncCount - count);
+  for (let i = start; i <= syncCount; i++) {
+    const r = seededRand(hashStr(pairId + "_tick_" + i));
+    offset = offset * 0.8 + (r() - 0.5) * 0.003;  // mean-reverting random walk
+    const decimals = base > 100 ? 2 : 4;
+    history.push(parseFloat((base * (1 + offset)).toFixed(decimals)));
+  }
+  return history;
+}
 
-  // Random walk price evolution
-  const prevOffset = (r2() - 0.5) * 0.004;
-  const currOffset = prevOffset + (r1() - 0.5) * 0.003;
-  const price = +(base * (1 + currOffset)).toFixed(base > 100 ? 2 : 4);
-  const priceChange = +((currOffset - prevOffset) * 100).toFixed(4);
+/** Detect Magic V patterns in price history */
+function detectMagicV(history: number[]): MagicV {
+  if (history.length < 5) return { detected: false, direction: null, strength: null, depth: 0 };
 
-  // Trend determined by direction of price over last 3 ticks
-  const r3 = seededRand(hashStr(pairId + "_tick_" + (syncCount - 2)));
-  const longOffset = (r3() - 0.5) * 0.006;
-  const trend: LiveMarketState["trend"] = currOffset > longOffset ? "bullish" : "bearish";
+  const recent = history.slice(-8);
+  const n = recent.length;
+  let bestBull = 0;
+  let bestBear = 0;
 
-  // Momentum
+  // Scan all local minima (Bull V) and maxima (Bear V)
+  for (let i = 1; i < n - 1; i++) {
+    // Bull V: price falls to a low then bounces back up
+    const leftHigh  = Math.max(...recent.slice(0, i));
+    const low       = recent[i];
+    const rightHigh = Math.max(...recent.slice(i + 1));
+    const drop      = (leftHigh - low) / leftHigh;
+    const recovery  = (rightHigh - low) / low;
+    if (drop > 0.001 && recovery > 0.0008) {
+      const strength = (drop + recovery) / 2;
+      if (strength > bestBull) bestBull = strength;
+    }
+
+    // Bear V (inverted V): price rises to a high then drops back down
+    const leftLow   = Math.min(...recent.slice(0, i));
+    const high      = recent[i];
+    const rightLow  = Math.min(...recent.slice(i + 1));
+    const rise      = (high - leftLow) / leftLow;
+    const collapse  = (high - rightLow) / high;
+    if (rise > 0.001 && collapse > 0.0008) {
+      const strength = (rise + collapse) / 2;
+      if (strength > bestBear) bestBear = strength;
+    }
+  }
+
+  const STRONG_THRESH   = 0.003;
+  const MODERATE_THRESH = 0.001;
+
+  if (bestBull > bestBear && bestBull > MODERATE_THRESH) {
+    return {
+      detected: true,
+      direction: "bull",
+      strength: bestBull > STRONG_THRESH ? "strong" : "moderate",
+      depth: +(bestBull * 100).toFixed(3),
+    };
+  }
+  if (bestBear > bestBull && bestBear > MODERATE_THRESH) {
+    return {
+      detected: true,
+      direction: "bear",
+      strength: bestBear > STRONG_THRESH ? "strong" : "moderate",
+      depth: +(bestBear * 100).toFixed(3),
+    };
+  }
+  return { detected: false, direction: null, strength: null, depth: 0 };
+}
+
+/** Calculate dynamic support and resistance from price history */
+function calcSR(history: number[], currentPrice: number): SRZones {
+  if (history.length < 3) {
+    return { support: currentPrice * 0.998, resistance: currentPrice * 1.002, nearSupport: false, nearResistance: false, bounceFromSupport: false, bounceFromResistance: false };
+  }
+  const decimals = currentPrice > 100 ? 2 : 4;
+  // Support = lowest recent price (potential floor)
+  const support     = parseFloat(Math.min(...history).toFixed(decimals));
+  // Resistance = highest recent price (potential ceiling)
+  const resistance  = parseFloat(Math.max(...history).toFixed(decimals));
+  const range       = resistance - support;
+  const threshold   = range * 0.15;  // within 15% of range = "near"
+
+  const nearSupport      = currentPrice - support    < threshold;
+  const nearResistance   = resistance  - currentPrice < threshold;
+
+  // Bounce = price was at the zone last tick and is now moving away
+  const prevPrice = history[history.length - 2] ?? currentPrice;
+  const bounceFromSupport    = nearSupport    && currentPrice > prevPrice;
+  const bounceFromResistance = nearResistance && currentPrice < prevPrice;
+
+  return { support, resistance, nearSupport, nearResistance, bounceFromSupport, bounceFromResistance };
+}
+
+export function computeMarketState(pairId: string, syncCount: number): Omit<LiveMarketState, "lastSync" | "syncCount"> {
+  const base     = BASE_PRICES[pairId] ?? BASE_PRICES.default;
+  const history  = buildPriceHistory(pairId, syncCount, 20);
+  const price    = history[history.length - 1];
+  const prevPrice = history[history.length - 2] ?? price;
+  const longPrice = history[0];
+
+  const priceChange = +((price - prevPrice) / prevPrice * 100).toFixed(4);
+  const trend: LiveMarketState["trend"] = price > longPrice ? "bullish" : "bearish";
+
   const absChange = Math.abs(priceChange);
   const momentum: LiveMarketState["momentum"] = absChange > 0.08 ? "strong" : absChange > 0.03 ? "normal" : "weak";
 
-  // Volatility based on recent range
-  const volSeed = hashStr(pairId + "_vol_" + Math.floor(syncCount / 3));
-  const vr = seededRand(volSeed)();
+  const r = seededRand(hashStr(pairId + "_meta_" + syncCount));
+  const vr = r();
   const volatility: LiveMarketState["volatility"] = vr > 0.65 ? "high" : vr > 0.3 ? "medium" : "low";
+  const volumeSpike = r() > 0.60;
 
-  // Volume spike
-  const volumeSpike = r1() > 0.62;
-
-  // Session bias (simulate FX session effects)
   const hour = new Date().getUTCHours();
   let sessionBias: LiveMarketState["sessionBias"];
-  const sessionRand = r1();
-  if (hour >= 7 && hour < 17) {
-    sessionBias = sessionRand > 0.45 ? trend : "neutral";
-  } else if (hour >= 17 && hour < 22) {
-    sessionBias = sessionRand > 0.5 ? trend : "neutral";
-  } else {
-    sessionBias = "neutral";
-  }
+  const sr2 = r();
+  if (hour >= 7 && hour < 17)      sessionBias = sr2 > 0.45 ? trend : "neutral";
+  else if (hour >= 17 && hour < 22) sessionBias = sr2 > 0.5 ? trend : "neutral";
+  else                               sessionBias = "neutral";
 
-  // Bollinger band position
-  const bbRand = r1();
-  const bbOptions: LiveMarketState["bbPosition"][] = ["above_upper", "near_upper", "middle", "near_lower", "below_lower"];
-  const bbWeights = trend === "bullish"
-    ? [0.05, 0.2, 0.4, 0.25, 0.1]
-    : [0.1, 0.25, 0.4, 0.2, 0.05];
-  let bbPos: LiveMarketState["bbPosition"] = "middle";
-  let cumWeight = 0;
-  for (let i = 0; i < bbWeights.length; i++) {
-    cumWeight += bbWeights[i];
-    if (bbRand < cumWeight) { bbPos = bbOptions[i]; break; }
-  }
+  // BB position from price relative to history range
+  const hiPrice = Math.max(...history);
+  const loPrice = Math.min(...history);
+  const range   = hiPrice - loPrice || 1;
+  const pct     = (price - loPrice) / range;
+  const bbPosition: LiveMarketState["bbPosition"] =
+    pct > 0.9 ? "above_upper" : pct > 0.7 ? "near_upper" :
+    pct < 0.1 ? "below_lower" : pct < 0.3 ? "near_lower" : "middle";
 
-  // EMA cross
-  const crossRand = r1();
+  // EMA cross from mid-history trend shift
+  const midPrice = history[Math.floor(history.length / 2)];
+  const earlyAvg = history.slice(0, 5).reduce((a, b) => a + b, 0) / 5;
+  const lateAvg  = history.slice(-5).reduce((a, b) => a + b, 0) / 5;
+  const crossRand = r();
   const emaCross: LiveMarketState["emaCross"] =
-    crossRand > 0.88 ? (trend === "bullish" ? "golden" : "death") : "none";
+    crossRand > 0.85 ? (lateAvg > earlyAvg ? "golden" : "death") : "none";
 
-  // Rate of change
-  const roc = +((currOffset - longOffset) * 1000).toFixed(2);
+  void base; void midPrice;
 
-  return { price, priceChange, trend, momentum, volatility, volumeSpike, sessionBias, bbPosition: bbPos, emaCross, roc };
+  const roc = +((price - longPrice) / longPrice * 1000).toFixed(2);
+  const magicV = detectMagicV(history);
+  const sr = calcSR(history, price);
+
+  return { price, priceChange, priceHistory: history, trend, momentum, volatility, volumeSpike, sessionBias, bbPosition, emaCross, roc, magicV, sr };
 }
 
 export function useLiveMarket(pairId: string | null): LiveMarketState | null {
   const [state, setState] = useState<LiveMarketState | null>(null);
-  const syncCountRef = useRef(0);
+  const syncCountRef = useRef(20); // start at 20 so we have history immediately
 
   useEffect(() => {
     if (!pairId) { setState(null); return; }
-
     function sync() {
       syncCountRef.current += 1;
       const mkt = computeMarketState(pairId!, syncCountRef.current);
       setState({ ...mkt, lastSync: new Date(), syncCount: syncCountRef.current });
     }
-
     sync();
     const interval = setInterval(sync, 3000);
     return () => clearInterval(interval);

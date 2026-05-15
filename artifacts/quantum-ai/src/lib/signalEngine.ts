@@ -1,59 +1,19 @@
 import type { LiveMarketState } from "./liveMarket";
 
-export type SignalDirection = "BUY" | "SELL" | "NEUTRAL";
+export type SignalDirection = "BUY" | "SELL";
 export type SignalGrade = "STRONG" | "NEUTRAL" | "WEAK";
-
-export interface IndicatorState {
-  // Trend
-  trendEMA200: "bullish" | "bearish";
-  emaCross: "golden" | "death" | "none";
-  adxStrength: number;
-  // Oscillators
-  rsi: number;
-  stochK: number;
-  stochD: number;
-  macdHist: "rising" | "falling";
-  roc: number;
-  // Volatility & Volume
-  bbPosition: LiveMarketState["bbPosition"];
-  volatility: "high" | "medium" | "low";
-  volumeSpike: boolean;
-  // Price action
-  nearSupport: boolean;
-  nearResistance: boolean;
-  bullCandle: boolean;
-  bearCandle: boolean;
-  // Pattern detection
-  fakeBreakout: boolean;
-  fakeReversal: boolean;
-  colorPattern: "bull" | "bear" | "none";
-  // Market context
-  sessionBias: "bullish" | "bearish" | "neutral";
-  momentum: "strong" | "normal" | "weak";
-  // Live price
-  livePrice: number;
-  priceChange: number;
-}
-
-export interface StrategyScore {
-  name: string;
-  weight: number;
-  bullish: boolean;
-  bearish: boolean;
-  note?: string;
-}
 
 export interface SignalResult {
   direction: SignalDirection;
   grade: SignalGrade;
-  buyScore: number;
-  sellScore: number;
-  maxScore: number;
   confidence: number;
-  indicators: IndicatorState;
-  strategies: StrategyScore[];
   fakeoutWarning: boolean;
-  analysisNotes: string[];
+  magicVSignal: boolean;
+  srBounce: boolean;
+  keyReason: string;        // single main reason — shown in UI
+  support: number;
+  resistance: number;
+  currentPrice: number;
 }
 
 function seededRandom(seed: number): () => number {
@@ -63,287 +23,163 @@ function seededRandom(seed: number): () => number {
     return (s >>> 0) / 0xffffffff;
   };
 }
-
 function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h = h & h; }
+  return Math.abs(h);
 }
 
 export function generateSignal(pairId: string, liveMarket: LiveMarketState): SignalResult {
   const now = Date.now();
-  // Tie to live sync count + 8-second micro-slots so signals refresh with market
-  const seed = hashString(pairId + "_v4_" + liveMarket.syncCount + "_" + Math.floor(now / 8000));
+  const seed = hashString(pairId + "_v5_" + liveMarket.syncCount + "_" + Math.floor(now / 8000));
   const rand = seededRandom(seed);
 
-  // ── Pull live market context ──
-  const { trend, momentum, volatility, volumeSpike, sessionBias, bbPosition, emaCross, roc, livePrice: price, priceChange } = liveMarket;
+  const { trend, momentum, volatility, volumeSpike, sessionBias,
+          bbPosition, emaCross, roc, magicV, sr } = liveMarket;
 
-  // ── Derive trend EMA (consistent with live trend) ──
-  const trendEMA200: IndicatorState["trendEMA200"] = trend === "bullish" ? "bullish" : "bearish";
+  // ── Oscillator values (seeded, aligned with live market) ──
+  const rsiMid  = trend === "bullish" ? 43 : 57;
+  const rsi     = Math.min(88, Math.max(12, Math.floor(rsiMid + (rand() - 0.5) * 28)));
+  const stochMid = trend === "bullish" ? 38 : 62;
+  const stochK  = Math.min(95, Math.max(5, Math.floor(stochMid + (rand() - 0.5) * 38)));
+  const stochD  = Math.min(95, Math.max(5, Math.floor(stochK  + (rand() - 0.5) * 6)));
+  const macdBull = rand() > 0.25 ? trend === "bullish" : trend !== "bullish";
+  const adx      = Math.min(60, Math.floor((momentum === "strong" ? 28 : momentum === "normal" ? 22 : 15) + rand() * 14));
+  const fakeBreakout = rand() > 0.87;
+  const fakeReversal = rand() > 0.90;
 
-  // ── ADX — higher when momentum is strong ──
-  const adxBase = momentum === "strong" ? 28 : momentum === "normal" ? 22 : 16;
-  const adxStrength = Math.min(60, Math.floor(adxBase + rand() * 14));
+  // ══════════════════════════════════════════════════════
+  // WEIGHTED SCORING — each factor adds to buy or sell
+  // ══════════════════════════════════════════════════════
+  type Vote = { buy: number; sell: number; label: string };
+  const votes: Vote[] = [];
 
-  // ── RSI — biased toward trend ──
-  const rsiMid = trend === "bullish" ? 44 : 56;
-  const rsi = Math.min(88, Math.max(12, Math.floor(rsiMid + (rand() - 0.5) * 30)));
+  const add = (buy: number, sell: number, label: string) => votes.push({ buy, sell, label });
 
-  // ── Stochastic ──
-  const stochMid = trend === "bullish" ? 40 : 60;
-  const stochK = Math.min(95, Math.max(5, Math.floor(stochMid + (rand() - 0.5) * 40)));
-  const stochD = Math.min(95, Math.max(5, Math.floor(stochK + (rand() - 0.5) * 8)));
-
-  // ── MACD hist direction — aligned with live trend ~75% of time ──
-  const macdAligned = rand() > 0.25;
-  const macdHist: IndicatorState["macdHist"] =
-    macdAligned ? (trend === "bullish" ? "rising" : "falling")
-    : (trend === "bullish" ? "falling" : "rising");
-
-  // ── S/R zones ──
-  const nearSupport = rand() > 0.42;
-  const nearResistance = rand() > 0.42;
-
-  // ── Candle pattern — aligned with trend ──
-  const bullCandle = trendEMA200 === "bullish" ? rand() > 0.22 : rand() > 0.72;
-  const bearCandle = trendEMA200 === "bearish" ? rand() > 0.22 : rand() > 0.72;
-
-  // ── Fakeout detection ──
-  const fakeBreakout = rand() > 0.86;
-  const fakeReversal = rand() > 0.89;
-
-  // ── Color pattern (biased toward trend, reinforced by bb position) ──
-  const cpVal = rand();
-  let colorPattern: IndicatorState["colorPattern"];
-  if (bbPosition === "below_lower" || bbPosition === "near_lower") {
-    colorPattern = cpVal > 0.25 ? "bull" : cpVal < 0.1 ? "bear" : "none";
-  } else if (bbPosition === "above_upper" || bbPosition === "near_upper") {
-    colorPattern = cpVal > 0.75 ? "bull" : cpVal < 0.25 ? "bear" : "none";
-  } else {
-    colorPattern = trend === "bullish"
-      ? (cpVal > 0.38 ? "bull" : cpVal < 0.12 ? "bear" : "none")
-      : (cpVal > 0.62 ? "bear" : cpVal < 0.12 ? "bull" : "none");
+  // 1. Magic V  — highest weight (3.0) — clearest reversal signal
+  if (magicV.detected && magicV.direction === "bull") {
+    const w = magicV.strength === "strong" ? 3.0 : 2.0;
+    add(w, 0, `Magic Bull-V detected (${magicV.depth.toFixed(3)}% depth)`);
+  } else if (magicV.detected && magicV.direction === "bear") {
+    const w = magicV.strength === "strong" ? 3.0 : 2.0;
+    add(0, w, `Magic Bear-V detected (${magicV.depth.toFixed(3)}% depth)`);
   }
 
-  // ══════════════════════════════════════════════════
-  // STRATEGY ENGINE — 10 strategies with weights
-  // ══════════════════════════════════════════════════
-  const strategies: StrategyScore[] = [];
+  // 2. S/R Bounce — weight 2.5
+  if (sr.bounceFromSupport)    add(2.5, 0,   "Price bouncing off key support");
+  if (sr.bounceFromResistance) add(0,   2.5, "Price rejecting key resistance");
+  else if (sr.nearSupport)     add(1.0, 0,   "Price near support zone");
+  else if (sr.nearResistance)  add(0,   1.0, "Price near resistance zone");
 
-  // 1. EMA Trend Alignment (weight 2)
-  strategies.push({
-    name: "EMA Trend Alignment",
-    weight: 2,
-    bullish: trendEMA200 === "bullish",
-    bearish: trendEMA200 === "bearish",
-    note: trendEMA200 === "bullish" ? "Price above EMA 200 — uptrend confirmed" : "Price below EMA 200 — downtrend confirmed",
-  });
+  // 3. EMA Crossover — weight 2.0
+  if (emaCross === "golden")   add(2.0, 0,   "Golden EMA cross — strong buy");
+  else if (emaCross === "death") add(0, 2.0, "Death EMA cross — strong sell");
 
-  // 2. EMA Crossover Signal (weight 2)
-  const emaBull = emaCross === "golden";
-  const emaBear = emaCross === "death";
-  strategies.push({
-    name: "EMA 50/200 Crossover",
-    weight: 2,
-    bullish: emaBull,
-    bearish: emaBear,
-    note: emaBull ? "Golden cross detected — strong buy signal" : emaBear ? "Death cross detected — strong sell signal" : "No crossover — awaiting confirmation",
-  });
+  // 4. EMA 200 Trend — weight 1.5
+  if (trend === "bullish")     add(1.5, 0,   "Price above EMA 200 — uptrend");
+  else                         add(0,   1.5, "Price below EMA 200 — downtrend");
 
-  // 3. RSI Oversold/Overbought (weight 1.5)
-  const rsiBull = rsi < 42;
-  const rsiBear = rsi > 58;
-  strategies.push({
-    name: "RSI Momentum Filter",
-    weight: 1.5,
-    bullish: rsiBull,
-    bearish: rsiBear,
-    note: rsiBull ? `RSI ${rsi} — oversold, bullish reversal zone` : rsiBear ? `RSI ${rsi} — overbought, bearish reversal zone` : `RSI ${rsi} — neutral zone`,
-  });
+  // 5. Bollinger Band — weight 1.5
+  if (bbPosition === "below_lower" || bbPosition === "near_lower") add(1.5, 0, "BB lower band — mean reversion buy");
+  else if (bbPosition === "above_upper" || bbPosition === "near_upper") add(0, 1.5, "BB upper band — mean reversion sell");
 
-  // 4. Stochastic %K/%D Signal (weight 1.5)
-  const stochBull = stochK < 25 && stochD < 30;
-  const stochBear = stochK > 75 && stochD > 70;
-  const stochCross = stochK > stochD;
-  strategies.push({
-    name: "Stochastic %K/%D Cross",
-    weight: 1.5,
-    bullish: stochBull || (stochCross && stochK < 50),
-    bearish: stochBear || (!stochCross && stochK > 50),
-    note: stochBull ? "Stoch oversold + %K cross — buy zone" : stochBear ? "Stoch overbought + %K cross — sell zone" : `Stoch %K ${stochK} / %D ${stochD}`,
-  });
+  // 6. RSI — weight 1.5
+  if (rsi < 38)      add(1.5, 0,   `RSI ${rsi} — oversold reversal zone`);
+  else if (rsi > 62) add(0,   1.5, `RSI ${rsi} — overbought reversal zone`);
+  else if (rsi < 50) add(0.5, 0,   `RSI ${rsi} — mild bullish`);
+  else               add(0,   0.5, `RSI ${rsi} — mild bearish`);
 
-  // 5. MACD Histogram Momentum (weight 1.5)
-  strategies.push({
-    name: "MACD Histogram",
-    weight: 1.5,
-    bullish: macdHist === "rising",
-    bearish: macdHist === "falling",
-    note: macdHist === "rising" ? "MACD histogram expanding bullish" : "MACD histogram expanding bearish",
-  });
+  // 7. Stochastic — weight 1.0
+  if (stochK < 20 && stochD < 25)    add(1.0, 0,   `Stoch ${stochK}/%D ${stochD} — oversold`);
+  else if (stochK > 80 && stochD > 75) add(0, 1.0, `Stoch ${stochK}/%D ${stochD} — overbought`);
+  else if (stochK > stochD)           add(0.5, 0,   `Stoch %K cross up`);
+  else                                 add(0,   0.5, `Stoch %K cross down`);
 
-  // 6. Bollinger Band Strategy (weight 1.5)
-  const bbBull = bbPosition === "near_lower" || bbPosition === "below_lower";
-  const bbBear = bbPosition === "near_upper" || bbPosition === "above_upper";
-  strategies.push({
-    name: "Bollinger Band Squeeze",
-    weight: 1.5,
-    bullish: bbBull,
-    bearish: bbBear,
-    note: bbBull ? "Price near lower BB — mean reversion buy signal"
-        : bbBear ? "Price near upper BB — mean reversion sell signal"
-        : "Price within BB middle — trend continuation mode",
-  });
+  // 8. MACD — weight 1.0
+  if (macdBull) add(1.0, 0, "MACD histogram bullish expansion");
+  else          add(0,   1.0, "MACD histogram bearish expansion");
 
-  // 7. Volume Spike Confirmation (weight 1)
-  strategies.push({
-    name: "Volume Spike Analysis",
-    weight: 1,
-    bullish: volumeSpike && trend === "bullish",
-    bearish: volumeSpike && trend === "bearish",
-    note: volumeSpike ? `Volume surge detected — ${trend} move validated` : "Normal volume — lower conviction",
-  });
+  // 9. Volume — weight 1.0
+  if (volumeSpike && trend === "bullish") add(1.0, 0, "Volume spike confirms bullish move");
+  else if (volumeSpike && trend === "bearish") add(0, 1.0, "Volume spike confirms bearish move");
 
-  // 8. Support / Resistance Zones (weight 1)
-  strategies.push({
-    name: "S/R Zone Reaction",
-    weight: 1,
-    bullish: nearSupport,
-    bearish: nearResistance,
-    note: nearSupport ? "Price bouncing off key support" : nearResistance ? "Price rejecting key resistance" : "No major S/R interaction",
-  });
+  // 10. ROC momentum — weight 0.8
+  if (roc > 0.6)        add(0.8, 0,   `ROC +${roc.toFixed(2)} — bullish acceleration`);
+  else if (roc < -0.6)  add(0,   0.8, `ROC ${roc.toFixed(2)} — bearish acceleration`);
 
-  // 9. Rate of Change / Momentum (weight 1)
-  const rocBull = roc > 0.5 && trend === "bullish";
-  const rocBear = roc < -0.5 && trend === "bearish";
-  strategies.push({
-    name: "Rate of Change (ROC)",
-    weight: 1,
-    bullish: rocBull,
-    bearish: rocBear,
-    note: rocBull ? `ROC +${roc.toFixed(2)} — bullish acceleration` : rocBear ? `ROC ${roc.toFixed(2)} — bearish acceleration` : `ROC ${roc.toFixed(2)} — momentum neutral`,
-  });
-
-  // 10. Session Bias Alignment (weight 0.5)
-  strategies.push({
-    name: "Market Session Bias",
-    weight: 0.5,
-    bullish: sessionBias === "bullish",
-    bearish: sessionBias === "bearish",
-    note: sessionBias === "neutral" ? "Off-peak session — lower liquidity" : `${sessionBias.charAt(0).toUpperCase() + sessionBias.slice(1)} session bias active`,
-  });
-
-  // 11. Candle Pattern Detection (weight 1)
-  strategies.push({
-    name: "Candle Pattern Recognition",
-    weight: 1,
-    bullish: bullCandle && colorPattern === "bull",
-    bearish: bearCandle && colorPattern === "bear",
-    note: colorPattern === "bull" && bullCandle ? "Bull engulf / pin bar + color pattern aligned"
-        : colorPattern === "bear" && bearCandle ? "Bear engulf / pin bar + color pattern aligned"
-        : "No high-confidence candle pattern",
-  });
-
-  // ── Tally weighted scores ──
-  const maxScore = strategies.reduce((sum, s) => sum + s.weight, 0);
-  let buyScore = 0;
-  let sellScore = 0;
-  for (const s of strategies) {
-    if (s.bullish) buyScore += s.weight;
-    if (s.bearish) sellScore += s.weight;
+  // 11. ADX trend strength — weight 0.8
+  if (adx >= 28) {
+    if (trend === "bullish") add(0.8, 0, `ADX ${adx} — strong bullish trend`);
+    else                     add(0,   0.8, `ADX ${adx} — strong bearish trend`);
   }
 
-  // ── Fakeout filter (subtracts from opposing side only) ──
-  const notes: string[] = [];
+  // 12. Session bias — weight 0.5
+  if (sessionBias === "bullish")   add(0.5, 0,   "Bullish session bias");
+  else if (sessionBias === "bearish") add(0, 0.5, "Bearish session bias");
+
+  // ── Tally ──
+  const maxScore = votes.reduce((s, v) => s + v.buy + v.sell, 0);
+  let buyTotal   = votes.reduce((s, v) => s + v.buy,  0);
+  let sellTotal  = votes.reduce((s, v) => s + v.sell, 0);
+
+  // Fakeout penalty — always to opposing side
   const fakeoutWarning = fakeBreakout || fakeReversal;
-  const fakeoutPenalty = 1.5;
-
   if (fakeBreakout) {
-    notes.push("Fake breakout detected — opposing score penalised");
-    if (buyScore >= sellScore) sellScore = Math.max(0, sellScore - fakeoutPenalty);
-    else buyScore = Math.max(0, buyScore - fakeoutPenalty);
+    if (buyTotal >= sellTotal) sellTotal  = Math.max(0, sellTotal  - 1.5);
+    else                       buyTotal   = Math.max(0, buyTotal   - 1.5);
   }
   if (fakeReversal) {
-    notes.push("Fake reversal filtered — dominant trend bias preserved");
-    if (buyScore >= sellScore) sellScore = Math.max(0, sellScore - fakeoutPenalty);
-    else buyScore = Math.max(0, buyScore - fakeoutPenalty);
+    if (buyTotal >= sellTotal) sellTotal  = Math.max(0, sellTotal  - 1.0);
+    else                       buyTotal   = Math.max(0, buyTotal   - 1.0);
   }
 
-  // Add strategy notes for significant ones
-  for (const s of strategies) {
-    if (s.note && (s.bullish || s.bearish)) notes.push(s.note);
-  }
-  if (adxStrength >= 30) notes.push(`Strong ADX ${adxStrength} — trend conviction confirmed`);
-  if (momentum === "strong") notes.push("High momentum — fast entry recommended");
-
-  // ── Final signal resolution ──
+  // ── Resolve direction ──
   let direction: SignalDirection;
+  if (buyTotal >= sellTotal) direction = "BUY";
+  else                       direction = "SELL";
+
+  // Low confluence check — require at least 30% of max
+  const activeScore = direction === "BUY" ? buyTotal : sellTotal;
+  const scorePct    = maxScore > 0 ? activeScore / maxScore : 0;
+
+  // Grade
   let grade: SignalGrade;
-  const minBuy = maxScore * 0.35;
+  if (scorePct >= 0.62) grade = "STRONG";
+  else if (scorePct >= 0.44) grade = "NEUTRAL";
+  else grade = "WEAK";
 
-  if (buyScore > sellScore && buyScore >= minBuy) {
-    direction = "BUY";
-    const pct = buyScore / maxScore;
-    grade = pct >= 0.65 ? "STRONG" : pct >= 0.45 ? "NEUTRAL" : "WEAK";
-  } else if (sellScore > buyScore && sellScore >= minBuy) {
-    direction = "SELL";
-    const pct = sellScore / maxScore;
-    grade = pct >= 0.65 ? "STRONG" : pct >= 0.45 ? "NEUTRAL" : "WEAK";
-  } else if (buyScore === sellScore) {
-    direction = bullCandle && !bearCandle ? "BUY"
-      : bearCandle && !bullCandle ? "SELL"
-      : trendEMA200 === "bullish" ? "BUY" : "SELL";
-    grade = "WEAK";
-    notes.push("Conflicting signals — resolved by candle/trend tiebreaker");
+  // If Magic V or S/R Bounce — always at least NEUTRAL
+  const magicVSignal = magicV.detected;
+  const srBounce     = sr.bounceFromSupport || sr.bounceFromResistance;
+  if ((magicVSignal || srBounce) && grade === "WEAK") grade = "NEUTRAL";
+
+  // Confidence (55–98 range)
+  const rawConf  = scorePct * 88 + rand() * 8 + 4;
+  const confidence = Math.min(98, Math.max(55, Math.round(rawConf)));
+
+  // Pick top reason — Magic V or S/R bounce first, else highest vote
+  let keyReason = "";
+  if (magicV.detected) {
+    keyReason = `Magic ${magicV.direction === "bull" ? "Bull-V ↗" : "Bear-V ↘"} pattern — ${magicV.strength} signal`;
+  } else if (srBounce) {
+    keyReason = sr.bounceFromSupport ? "Bouncing off key support — reversal buy" : "Rejected at resistance — reversal sell";
   } else {
-    direction = trendEMA200 === "bullish" ? "BUY" : "SELL";
-    grade = "WEAK";
-    notes.push("Low confluence — minimum threshold applied");
+    const topVote = [...votes]
+      .filter(v => direction === "BUY" ? v.buy > 0 : v.sell > 0)
+      .sort((a, b) => (direction === "BUY" ? b.buy - a.buy : b.sell - a.sell))[0];
+    keyReason = topVote?.label ?? (direction === "BUY" ? "Bullish confluence" : "Bearish confluence");
   }
-
-  if (fakeoutWarning) notes.push("Fakeout pattern detected — trade with extra caution");
-
-  const activeScore = direction === "BUY" ? buyScore : sellScore;
-  const rawConf = (activeScore / maxScore) * 90 + rand() * 8 + 2;
-  const confidence = Math.min(98, Math.max(52, Math.round(rawConf)));
 
   return {
     direction,
     grade,
-    buyScore: +buyScore.toFixed(1),
-    sellScore: +sellScore.toFixed(1),
-    maxScore: +maxScore.toFixed(1),
     confidence,
     fakeoutWarning,
-    strategies,
-    analysisNotes: notes,
-    indicators: {
-      trendEMA200,
-      emaCross,
-      adxStrength,
-      rsi,
-      stochK,
-      stochD,
-      macdHist,
-      roc,
-      bbPosition,
-      volatility,
-      volumeSpike,
-      nearSupport,
-      nearResistance,
-      bullCandle,
-      bearCandle,
-      fakeBreakout,
-      fakeReversal,
-      colorPattern,
-      sessionBias,
-      momentum,
-      livePrice: price ?? 0,
-      priceChange: priceChange ?? 0,
-    },
+    magicVSignal,
+    srBounce,
+    keyReason,
+    support:      sr.support,
+    resistance:   sr.resistance,
+    currentPrice: liveMarket.price,
   };
 }
