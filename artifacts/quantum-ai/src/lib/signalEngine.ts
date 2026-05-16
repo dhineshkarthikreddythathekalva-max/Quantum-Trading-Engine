@@ -10,7 +10,9 @@ export interface SignalResult {
   fakeoutWarning: boolean;
   magicVSignal: boolean;
   srBounce: boolean;
-  keyReason: string;        // single main reason — shown in UI
+  errorCandleSignal: boolean;
+  errorCandleCount: number;
+  keyReason: string;
   support: number;
   resistance: number;
   currentPrice: number;
@@ -55,6 +57,19 @@ export function generateSignal(pairId: string, liveMarket: LiveMarketState): Sig
   const votes: Vote[] = [];
 
   const add = (buy: number, sell: number, label: string) => votes.push({ buy, sell, label });
+
+  // 0. Error Candle (counter-trend trap) — weight 2.5 — fires BUY/SELL in TREND direction
+  const { errorCandle } = liveMarket;
+  if (errorCandle.detected) {
+    const w = errorCandle.consecutive >= 2 ? 2.5 : 1.5;
+    if (errorCandle.type === "counter_bull") {
+      // bearish candle in uptrend → expect trend to resume → BUY
+      add(w, 0, `Error candle: ${errorCandle.consecutive} bearish trap${errorCandle.consecutive > 1 ? "s" : ""} in uptrend — BUY the dip`);
+    } else {
+      // bullish candle in downtrend → expect trend to resume → SELL
+      add(0, w, `Error candle: ${errorCandle.consecutive} bullish trap${errorCandle.consecutive > 1 ? "s" : ""} in downtrend — SELL the pop`);
+    }
+  }
 
   // 1. Magic V  — highest weight (3.0) — clearest reversal signal
   if (magicV.detected && magicV.direction === "bull") {
@@ -157,10 +172,17 @@ export function generateSignal(pairId: string, liveMarket: LiveMarketState): Sig
   const rawConf  = scorePct * 88 + rand() * 8 + 4;
   const confidence = Math.min(98, Math.max(55, Math.round(rawConf)));
 
-  // Pick top reason — Magic V or S/R bounce first, else highest vote
+  const errorCandleSignal = errorCandle.detected;
+  const errorCandleCount  = errorCandle.consecutive;
+
+  // Pick top reason — priority: Magic V > Error Candle > S/R Bounce > top vote
   let keyReason = "";
   if (magicV.detected) {
     keyReason = `Magic ${magicV.direction === "bull" ? "Bull-V ↗" : "Bear-V ↘"} pattern — ${magicV.strength} signal`;
+  } else if (errorCandleSignal) {
+    keyReason = errorCandle.type === "counter_bull"
+      ? `${errorCandleCount} error candle${errorCandleCount > 1 ? "s" : ""} against uptrend — BUY the dip`
+      : `${errorCandleCount} error candle${errorCandleCount > 1 ? "s" : ""} against downtrend — SELL the pop`;
   } else if (srBounce) {
     keyReason = sr.bounceFromSupport ? "Bouncing off key support — reversal buy" : "Rejected at resistance — reversal sell";
   } else {
@@ -177,6 +199,8 @@ export function generateSignal(pairId: string, liveMarket: LiveMarketState): Sig
     fakeoutWarning,
     magicVSignal,
     srBounce,
+    errorCandleSignal,
+    errorCandleCount,
     keyReason,
     support:      sr.support,
     resistance:   sr.resistance,

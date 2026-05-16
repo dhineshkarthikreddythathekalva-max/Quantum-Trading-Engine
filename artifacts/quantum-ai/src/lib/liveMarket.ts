@@ -16,6 +16,15 @@ export interface SRZones {
   bounceFromResistance: boolean;
 }
 
+export interface ErrorCandle {
+  detected: boolean;
+  /** counter_bull = bearish candle inside uptrend → expect BUY continuation
+   *  counter_bear = bullish candle inside downtrend → expect SELL continuation */
+  type: "counter_bull" | "counter_bear" | null;
+  consecutive: number;   // how many consecutive error candles
+  depth: number;         // % size of the error candle vs trend move
+}
+
 export interface LiveMarketState {
   price: number;
   priceChange: number;
@@ -30,6 +39,7 @@ export interface LiveMarketState {
   roc: number;
   magicV: MagicV;
   sr: SRZones;
+  errorCandle: ErrorCandle;
   lastSync: Date;
   syncCount: number;
 }
@@ -137,6 +147,43 @@ function detectMagicV(history: number[]): MagicV {
   return { detected: false, direction: null, strength: null, depth: 0 };
 }
 
+/** Detect error candles — counter-trend candles inside a dominant trend */
+function detectErrorCandle(history: number[], trend: "bullish" | "bearish"): ErrorCandle {
+  if (history.length < 4) return { detected: false, type: null, consecutive: 0, depth: 0 };
+
+  // Each tick delta = a simulated "candle" direction
+  const deltas: number[] = [];
+  for (let i = 1; i < history.length; i++) deltas.push(history[i] - history[i - 1]);
+
+  // Overall trend move for reference (depth calculation)
+  const trendMove = Math.abs(history[history.length - 1] - history[0]);
+
+  // Scan last 3 candles for counter-trend moves
+  const last3 = deltas.slice(-3);
+  let consecutive = 0;
+  let totalErrorDepth = 0;
+
+  for (let i = last3.length - 1; i >= 0; i--) {
+    const delta = last3[i];
+    const isError =
+      (trend === "bullish" && delta < 0) ||  // bearish candle in uptrend
+      (trend === "bearish" && delta > 0);     // bullish candle in downtrend
+    if (isError) {
+      consecutive++;
+      totalErrorDepth += Math.abs(delta);
+    } else {
+      break; // stop at first non-error candle (must be consecutive from the end)
+    }
+  }
+
+  if (consecutive === 0) return { detected: false, type: null, consecutive: 0, depth: 0 };
+
+  const depthPct = trendMove > 0 ? +(totalErrorDepth / trendMove * 100).toFixed(2) : 0;
+  const type: ErrorCandle["type"] = trend === "bullish" ? "counter_bull" : "counter_bear";
+
+  return { detected: true, type, consecutive, depth: depthPct };
+}
+
 /** Calculate dynamic support and resistance from price history */
 function calcSR(history: number[], currentPrice: number): SRZones {
   if (history.length < 3) {
@@ -206,10 +253,11 @@ export function computeMarketState(pairId: string, syncCount: number): Omit<Live
   void base; void midPrice;
 
   const roc = +((price - longPrice) / longPrice * 1000).toFixed(2);
-  const magicV = detectMagicV(history);
-  const sr = calcSR(history, price);
+  const magicV       = detectMagicV(history);
+  const sr           = calcSR(history, price);
+  const errorCandle  = detectErrorCandle(history, trend);
 
-  return { price, priceChange, priceHistory: history, trend, momentum, volatility, volumeSpike, sessionBias, bbPosition, emaCross, roc, magicV, sr };
+  return { price, priceChange, priceHistory: history, trend, momentum, volatility, volumeSpike, sessionBias, bbPosition, emaCross, roc, magicV, sr, errorCandle };
 }
 
 export function useLiveMarket(pairId: string | null): LiveMarketState | null {
