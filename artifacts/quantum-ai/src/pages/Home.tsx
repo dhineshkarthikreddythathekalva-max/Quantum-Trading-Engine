@@ -232,21 +232,25 @@ export default function Home() {
       const entry  = new Date(getNextCandleMs(selectedTf));
       const expiry = new Date(entry.getTime() + msMap[selectedTf]);
       setCurrentSignal(result);
-      setEntryTime(entry);
-      setExpiryTime(expiry);
       setIsAnalyzing(false);
-      setHistory(prev => [{
-        id: `${Date.now()}-${Math.random()}`,
-        pair: selectedPair, timeframe: selectedTf, result,
-        timestamp: new Date(), entryTime: entry, expiryTime: expiry,
-      }, ...prev].slice(0, 50));
+      if (result.direction !== "SKIP") {
+        setEntryTime(entry);
+        setExpiryTime(expiry);
+        setHistory(prev => [{
+          id: `${Date.now()}-${Math.random()}`,
+          pair: selectedPair, timeframe: selectedTf, result,
+          timestamp: new Date(), entryTime: entry, expiryTime: expiry,
+        }, ...prev].slice(0, 50));
+      } else {
+        setEntryTime(null);
+        setExpiryTime(null);
+      }
     }, 1400);
   }, [selectedPair, selectedTf, liveMarket, isAnalyzing]);
 
-  const isBuy  = currentSignal?.direction === "BUY";
-  const isSell = !isBuy;
+  const isBuy      = currentSignal?.direction === "BUY";
   const gradeLabel = (g: SignalResult["grade"]) =>
-    g === "STRONG" ? "⚡ STRONG" : g === "NEUTRAL" ? "◈ MODERATE" : "○ WEAK";
+    g === "STRONG" ? "⚡ STRONG" : g === "MODERATE" ? "◈ MODERATE" : "○ WEAK";
 
   return (
     <div className="min-h-screen text-foreground flex flex-col">
@@ -421,94 +425,125 @@ export default function Home() {
         )}
 
         {/* ══ 6. SIGNAL RESULT ══ */}
-        {currentSignal && entryTime && expiryTime && !isAnalyzing && (
-          <div className={`animate-slide-up rounded-2xl border-2 overflow-hidden ${
-            isBuy ? "border-emerald-500/60 shadow-[0_0_40px_hsl(152_70%_50%/0.15)]"
-                  : "border-red-500/60 shadow-[0_0_40px_hsl(0_70%_55%/0.15)]"
-          }`}>
-            {/* grade bar */}
-            <div className={`px-4 py-1.5 flex items-center justify-between text-[10px] font-bold font-mono ${isBuy ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
-              <span className={isBuy ? "text-emerald-400" : "text-red-400"}>{gradeLabel(currentSignal.grade)}</span>
-              <span className="text-slate-500">{currentSignal.confidence}% confidence</span>
-            </div>
-
-            <div className={`p-5 flex flex-col gap-4 ${isBuy ? "bg-emerald-500/5" : "bg-red-500/5"}`}>
-
-              {/* BIG direction */}
-              <div className="flex flex-col items-center py-2">
-                {isBuy
-                  ? <div className="flex items-center gap-3"><ChevronUp className="w-20 h-20 text-emerald-400" strokeWidth={3} /><span className="text-7xl font-black text-emerald-400 tracking-widest">BUY</span></div>
-                  : <div className="flex items-center gap-3"><ChevronDown className="w-20 h-20 text-red-400" strokeWidth={3} /><span className="text-7xl font-black text-red-400 tracking-widest">SELL</span></div>
-                }
-              </div>
-
-              {/* Key reason */}
-              <div className={`flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold ${
-                isBuy ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
-                      : "bg-red-500/10 border border-red-500/20 text-red-300"
-              }`}>
-                <span className="mt-0.5 shrink-0">›</span>
-                <span>{currentSignal.keyReason}</span>
-              </div>
-
-              {/* Signal badges */}
-              <div className="flex flex-wrap gap-2">
-                {currentSignal.errorCandleSignal && (
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${isBuy ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-300"}`}>
-                    {isBuy ? "⬇" : "⬆"} {currentSignal.errorCandleCount}x Error Candle
-                  </span>
-                )}
-                {currentSignal.magicVSignal && (
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${isBuy ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-300"}`}>
-                    {isBuy ? "V" : "∧"} Magic V Confirmed
-                  </span>
-                )}
-                {currentSignal.srBounce && (
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${isBuy ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-300"}`}>
-                    {isBuy ? "↑ Support Bounce" : "↓ Resistance Reject"}
-                  </span>
-                )}
-              </div>
-
-              {/* Entry + Expiry */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">Entry At</span>
-                  <span className="text-base font-black text-white font-mono">
-                    {entryTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                  </span>
-                  <EntryCountdown entryTime={entryTime} />
+        {currentSignal && !isAnalyzing && (
+          <>
+            {/* ── SKIP card ── */}
+            {currentSignal.direction === "SKIP" && (
+              <div className="animate-slide-up rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 overflow-hidden">
+                <div className="px-4 py-1.5 bg-amber-500/10 flex items-center justify-between text-[10px] font-bold font-mono">
+                  <span className="text-amber-400">⏸ NO SIGNAL</span>
+                  <span className="text-slate-500">Market not ready</span>
                 </div>
-                <div className="flex flex-col gap-1.5 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">Expiry</span>
-                  <span className="text-base font-black text-white font-mono">
-                    {expiryTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                  </span>
-                  <div className="flex items-center gap-1 text-xs text-slate-400 font-mono">
-                    <Clock className="w-3.5 h-3.5 text-slate-500" />{activeTf.long}
+                <div className="p-6 flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-6xl font-black text-amber-400 tracking-widest select-none">SKIP</span>
+                    <p className="text-sm text-amber-300 font-bold text-center">Do not enter this candle</p>
+                  </div>
+                  <div className="w-full flex items-start gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <span>{currentSignal.skipReason}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Wait for next candle — click Get Signal again after the market shifts</span>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Pair info */}
-              <div className="flex items-center justify-center gap-3 text-xs text-slate-400 flex-wrap">
-                <span className="font-bold text-white">{selectedPair?.name}</span>
-                {selectedPair?.isOTC && <span className="text-[9px] font-bold text-violet-400 bg-violet-500/15 px-1.5 py-0.5 rounded border border-violet-500/30">OTC</span>}
-                <span className="text-slate-600">·</span>
-                <span className="font-mono text-cyan-400 font-bold">{selectedTf}</span>
-                <span className="text-slate-600">·</span>
-                <span className="font-mono">{selectedPair?.profitability}% payout</span>
-              </div>
-
-              {/* Fakeout */}
-              {currentSignal.fakeoutWarning && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  Conflicting pattern — consider skipping or waiting for confirmation
+            {/* ── BUY / SELL card ── */}
+            {(currentSignal.direction === "BUY" || currentSignal.direction === "SELL") && entryTime && expiryTime && (
+              <div className={`animate-slide-up rounded-2xl border-2 overflow-hidden ${
+                isBuy ? "border-emerald-500/60 shadow-[0_0_40px_hsl(152_70%_50%/0.15)]"
+                      : "border-red-500/60 shadow-[0_0_40px_hsl(0_70%_55%/0.15)]"
+              }`}>
+                {/* grade bar */}
+                <div className={`px-4 py-1.5 flex items-center justify-between text-[10px] font-bold font-mono ${isBuy ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
+                  <span className={isBuy ? "text-emerald-400" : "text-red-400"}>{gradeLabel(currentSignal.grade)}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500">{currentSignal.highWeightCount} major factor{currentSignal.highWeightCount !== 1 ? "s" : ""}</span>
+                    <span className="text-slate-500">{currentSignal.confidence}% confidence</span>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
+
+                <div className={`p-5 flex flex-col gap-4 ${isBuy ? "bg-emerald-500/5" : "bg-red-500/5"}`}>
+
+                  {/* BIG direction */}
+                  <div className="flex flex-col items-center py-2">
+                    {isBuy
+                      ? <div className="flex items-center gap-3"><ChevronUp className="w-20 h-20 text-emerald-400" strokeWidth={3} /><span className="text-7xl font-black text-emerald-400 tracking-widest">BUY</span></div>
+                      : <div className="flex items-center gap-3"><ChevronDown className="w-20 h-20 text-red-400" strokeWidth={3} /><span className="text-7xl font-black text-red-400 tracking-widest">SELL</span></div>
+                    }
+                  </div>
+
+                  {/* Key reason */}
+                  <div className={`flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold ${
+                    isBuy ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                          : "bg-red-500/10 border border-red-500/20 text-red-300"
+                  }`}>
+                    <span className="mt-0.5 shrink-0">›</span>
+                    <span>{currentSignal.keyReason}</span>
+                  </div>
+
+                  {/* Signal confirmation badges */}
+                  <div className="flex flex-wrap gap-2">
+                    {currentSignal.errorCandleSignal && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${isBuy ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-300"}`}>
+                        {isBuy ? "⬇" : "⬆"} {currentSignal.errorCandleCount}x Error Candle
+                      </span>
+                    )}
+                    {currentSignal.magicVSignal && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${isBuy ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-300"}`}>
+                        {isBuy ? "V" : "∧"} Magic V
+                      </span>
+                    )}
+                    {currentSignal.srBounce && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${isBuy ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-300"}`}>
+                        {isBuy ? "↑ Support Bounce" : "↓ Resistance Reject"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Entry + Expiry */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">Entry At</span>
+                      <span className="text-base font-black text-white font-mono">
+                        {entryTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                      <EntryCountdown entryTime={entryTime} />
+                    </div>
+                    <div className="flex flex-col gap-1.5 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">Expiry</span>
+                      <span className="text-base font-black text-white font-mono">
+                        {expiryTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                      <div className="flex items-center gap-1 text-xs text-slate-400 font-mono">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />{activeTf.long}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pair info */}
+                  <div className="flex items-center justify-center gap-3 text-xs text-slate-400 flex-wrap">
+                    <span className="font-bold text-white">{selectedPair?.name}</span>
+                    {selectedPair?.isOTC && <span className="text-[9px] font-bold text-violet-400 bg-violet-500/15 px-1.5 py-0.5 rounded border border-violet-500/30">OTC</span>}
+                    <span className="text-slate-600">·</span>
+                    <span className="font-mono text-cyan-400 font-bold">{selectedTf}</span>
+                    <span className="text-slate-600">·</span>
+                    <span className="font-mono">{selectedPair?.profitability}% payout</span>
+                  </div>
+
+                  {currentSignal.fakeoutWarning && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      Fakeout pattern detected — trade with extra caution
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* No pair placeholder */}

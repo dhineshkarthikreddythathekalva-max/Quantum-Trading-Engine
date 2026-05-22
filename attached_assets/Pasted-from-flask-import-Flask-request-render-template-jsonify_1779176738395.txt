@@ -1,0 +1,91 @@
+from flask import Flask, request, render_template, jsonify
+from datetime import datetime
+import requests
+import os
+
+app = Flask(__name__)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN", "PASTE_YOUR_BOT_TOKEN_HERE")
+CHAT_ID = os.getenv("CHAT_ID", "8187116273")
+
+signals = []
+
+def send_telegram(message):
+    if not BOT_TOKEN or BOT_TOKEN == "PASTE_YOUR_BOT_TOKEN_HERE":
+        return
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(url, json={
+        "chat_id": CHAT_ID,
+        "text": message
+    })
+
+def calculate_ai_score(data):
+    score = 50
+
+    signal = data.get("side", "")
+    trend = data.get("trend", "")
+    strength = float(data.get("strength", 0.5))
+    volume = float(data.get("volume", 0.8))
+
+    if signal == trend:
+        score += 20
+
+    if strength >= 0.35:
+        score += 15
+
+    if volume >= 0.8:
+        score += 10
+
+    if signal in ["BUY", "SELL"]:
+        score += 5
+
+    return min(score, 100)
+
+@app.route("/")
+def dashboard():
+    return render_template("index.html", signals=list(reversed(signals[-100:])))
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.json or {}
+
+    score = calculate_ai_score(data)
+
+    signal = {
+        "pair": data.get("pair", "UNKNOWN"),
+        "side": data.get("side", "NONE"),
+        "price": data.get("price", "0"),
+        "tf": data.get("tf", "M1"),
+        "trend": data.get("trend", "UNKNOWN"),
+        "score": score,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    signals.append(signal)
+
+    if signal["side"] in ["BUY", "SELL"] and score >= 75:
+        emoji = "🟢" if signal["side"] == "BUY" else "🔴"
+
+        msg = f"""
+{emoji} AI SIGNAL
+
+Pair: {signal['pair']}
+Signal: {signal['side']}
+Timeframe: {signal['tf']}
+Price: {signal['price']}
+Trend: {signal['trend']}
+AI Score: {score}%
+Time: {signal['time']}
+"""
+        send_telegram(msg)
+
+    return jsonify({"status": "success", "signal": signal})
+
+@app.route("/clear")
+def clear():
+    signals.clear()
+    return "Signals cleared"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=3000)
