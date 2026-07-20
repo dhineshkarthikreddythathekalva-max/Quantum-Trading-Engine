@@ -7,8 +7,10 @@ import {
   Zap, ChevronUp, ChevronDown, Clock, AlertTriangle, BarChart2,
   ChevronRight, Search, X, Wifi, WifiOff, RefreshCw,
   ArrowUpRight, ArrowDownRight, Timer, TrendingUp, TrendingDown,
-  Activity, Layers,
+  Activity, Layers, Trophy, XCircle,
 } from "lucide-react";
+
+type SignalOutcome = "win" | "loss" | null;
 
 interface SignalHistoryEntry {
   id: string;
@@ -18,9 +20,9 @@ interface SignalHistoryEntry {
   timestamp: Date;
   entryTime: Date;
   expiryTime: Date;
+  outcome: SignalOutcome;
 }
 
-/* ── helpers ── */
 function fmt2(n: number) { return String(n).padStart(2, "0"); }
 function getNextCandleMs(tf: Timeframe): number {
   const ms: Record<Timeframe, number> = { "30s": 30000, "1m": 60000, "5m": 300000, "30m": 1800000 };
@@ -32,7 +34,7 @@ function msCountdown(ms: number) {
   return `${fmt2(Math.floor(s / 60))}:${fmt2(s % 60)}`;
 }
 
-/* ── Live digital clock ── */
+/* ── Live clock ── */
 function LiveClock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -102,8 +104,8 @@ function SRBar({ support, resistance, price }: { support: number; resistance: nu
         <span className="text-red-500">Resistance</span>
       </div>
       <div className="relative h-2.5 bg-white/5 rounded-full">
-        <div className="absolute left-0 top-0 h-full w-[15%] bg-emerald-500/25 rounded-l-full" />
-        <div className="absolute right-0 top-0 h-full w-[15%] bg-red-500/25 rounded-r-full" />
+        <div className="absolute left-0 top-0 h-full w-[12%] bg-emerald-500/25 rounded-l-full" />
+        <div className="absolute right-0 top-0 h-full w-[12%] bg-red-500/25 rounded-r-full" />
         <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-cyan-400 bg-background shadow-[0_0_10px_hsl(186_100%_50%/0.8)] transition-all duration-700"
           style={{ left: `${pct * 100}%` }} />
       </div>
@@ -111,19 +113,6 @@ function SRBar({ support, resistance, price }: { support: number; resistance: nu
         <span className="text-emerald-400">{support.toLocaleString(undefined, { maximumFractionDigits: dec })}</span>
         <span className="text-red-400">{resistance.toLocaleString(undefined, { maximumFractionDigits: dec })}</span>
       </div>
-    </div>
-  );
-}
-
-/* ── RSI Arc gauge ── */
-function RSIGauge({ value }: { value: number }) {
-  const color = value < 30 ? "#34d399" : value > 70 ? "#f87171" : "#94a3b8";
-  const label = value < 30 ? "OVERSOLD" : value > 70 ? "OVERBOUGHT" : "NEUTRAL";
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div className={`text-lg font-black font-mono`} style={{ color }}>{value.toFixed(0)}</div>
-      <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">RSI</div>
-      <div className={`text-[8px] font-bold`} style={{ color }}>{label}</div>
     </div>
   );
 }
@@ -144,44 +133,44 @@ function IndChip({ label, value, bull }: { label: string; value: string; bull: b
 /* ── Live Indicators Panel ── */
 function IndicatorsPanel({ market }: { market: ReturnType<typeof useLiveMarket> }) {
   if (!market) return null;
-  const { indicators: ind, structure: str } = market;
+  const { indicators: ind, structure: str, sessionName } = market;
   const rsiColor = ind.rsi14 < 30 ? "text-emerald-400" : ind.rsi14 > 70 ? "text-red-400" : "text-slate-400";
+  const stackColor = ind.emaStack === "bull_stack" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+    : ind.emaStack === "bear_stack" ? "border-red-500/30 bg-red-500/10 text-red-400"
+    : "border-white/10 bg-white/5 text-slate-500";
 
   return (
     <div className="glass-panel rounded-2xl px-4 py-3 flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <Activity className="w-3.5 h-3.5 text-slate-500" />
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Live Indicators</span>
-        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ml-auto ${
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
           str.trend === "bullish" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
           : str.trend === "bearish" ? "border-red-500/30 bg-red-500/10 text-red-400"
           : "border-white/10 bg-white/5 text-slate-500"
-        }`}>
-          {str.trend.toUpperCase()}
+        }`}>{str.trend.toUpperCase()}</span>
+        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border ml-1 ${stackColor}`}>
+          {ind.emaStack === "bull_stack" ? "EMA ↑↑↑" : ind.emaStack === "bear_stack" ? "EMA ↓↓↓" : "EMA MIX"}
         </span>
+        <span className="ml-auto text-[8px] font-mono text-slate-600">{sessionName}</span>
       </div>
 
-      {/* Row 1: RSI + ADX + BB */}
       <div className="grid grid-cols-4 gap-2">
         <IndChip label="RSI(14)" value={ind.rsi14.toFixed(0)} bull={ind.rsi14 < 45 ? true : ind.rsi14 > 55 ? false : null} />
         <IndChip label="ADX" value={ind.adx.toFixed(0)} bull={ind.adx > 25 ? true : null} />
         <IndChip label="STOCH" value={`${ind.stochK.toFixed(0)}/${ind.stochD.toFixed(0)}`}
-          bull={ind.stochSignal === "oversold" ? true : ind.stochSignal === "overbought" ? false : ind.stochK > ind.stochD ? true : false} />
+          bull={ind.stochSignal === "oversold" ? true : ind.stochSignal === "overbought" ? false : ind.stochK > ind.stochD} />
         <IndChip label="BB%" value={`${(ind.bbPct * 100).toFixed(0)}%`}
           bull={ind.bbPct < 0.35 ? true : ind.bbPct > 0.65 ? false : null} />
       </div>
 
-      {/* Row 2: EMA + MACD */}
       <div className="grid grid-cols-3 gap-2">
-        <IndChip label="EMA Trend" value={ind.emaTrend === "bullish" ? "↑ BULL" : "↓ BEAR"}
-          bull={ind.emaTrend === "bullish"} />
+        <IndChip label="EMA Trend" value={ind.emaTrend === "bullish" ? "↑ BULL" : "↓ BEAR"} bull={ind.emaTrend === "bullish"} />
         <IndChip label="MACD" value={ind.macdCross !== "none" ? (ind.macdCross === "bullish" ? "✕ UP" : "✕ DN") : (ind.macdHist >= 0 ? "▲ POS" : "▼ NEG")}
           bull={ind.macdHist >= 0} />
-        <IndChip label="+DI/-DI" value={`${ind.plusDI.toFixed(0)}/${ind.minusDI.toFixed(0)}`}
-          bull={ind.plusDI > ind.minusDI} />
+        <IndChip label="+DI/-DI" value={`${ind.plusDI.toFixed(0)}/${ind.minusDI.toFixed(0)}`} bull={ind.plusDI > ind.minusDI} />
       </div>
 
-      {/* RSI visual bar */}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between text-[9px] font-mono text-slate-600">
           <span className="text-emerald-600">30</span>
@@ -261,7 +250,6 @@ function PairDropdown({ selectedPair, onSelect }: { selectedPair: TradingPair | 
                       <span className="font-semibold">{pair.name}</span>
                       {pair.isOTC && <span className="text-[9px] text-violet-400 font-bold">OTC</span>}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">{pair.profitability}%</span>
                   </button>
                 ))}
           </div>
@@ -289,17 +277,53 @@ function SyncBadge({ market }: { market: ReturnType<typeof useLiveMarket> }) {
   );
 }
 
+/* ── Win/Loss stat bar ── */
+function WinRateBar({ history }: { history: SignalHistoryEntry[] }) {
+  const decided = history.filter(h => h.outcome !== null);
+  const wins    = decided.filter(h => h.outcome === "win").length;
+  const losses  = decided.filter(h => h.outcome === "loss").length;
+  const rate    = decided.length > 0 ? Math.round((wins / decided.length) * 100) : null;
+  if (history.length === 0) return null;
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5 text-xs font-mono">
+      <div className="flex items-center gap-1.5 text-slate-400">
+        <span className="text-slate-500">Total:</span>
+        <span className="font-bold text-white">{history.length}</span>
+      </div>
+      <div className="flex items-center gap-1 text-emerald-400">
+        <Trophy className="w-3 h-3" />
+        <span className="font-bold">{wins}W</span>
+      </div>
+      <div className="flex items-center gap-1 text-red-400">
+        <XCircle className="w-3 h-3" />
+        <span className="font-bold">{losses}L</span>
+      </div>
+      {rate !== null && (
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="w-20 h-1.5 bg-white/8 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full transition-all duration-700" style={{ width: `${rate}%` }} />
+          </div>
+          <span className={`font-black text-sm ${rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-red-400"}`}>
+            {rate}%
+          </span>
+        </div>
+      )}
+      {decided.length === 0 && <span className="ml-auto text-slate-600 text-[9px]">Mark signals as win/loss to track rate</span>}
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════ */
 export default function Home() {
-  const [selectedPair, setSelectedPair] = useState<TradingPair | null>(null);
-  const [selectedTf, setSelectedTf]     = useState<Timeframe>("1m");
+  const [selectedPair, setSelectedPair]   = useState<TradingPair | null>(null);
+  const [selectedTf, setSelectedTf]       = useState<Timeframe>("1m");
   const [currentSignal, setCurrentSignal] = useState<SignalResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing]   = useState(false);
-  const [history, setHistory]           = useState<SignalHistoryEntry[]>([]);
-  const [entryTime, setEntryTime]       = useState<Date | null>(null);
-  const [expiryTime, setExpiryTime]     = useState<Date | null>(null);
+  const [isAnalyzing, setIsAnalyzing]     = useState(false);
+  const [history, setHistory]             = useState<SignalHistoryEntry[]>([]);
+  const [entryTime, setEntryTime]         = useState<Date | null>(null);
+  const [expiryTime, setExpiryTime]       = useState<Date | null>(null);
 
   const activeTf   = TIMEFRAMES.find(t => t.id === selectedTf)!;
   const liveMarket = useLiveMarket(selectedPair?.id ?? null);
@@ -325,13 +349,18 @@ export default function Home() {
           id: `${Date.now()}-${Math.random()}`,
           pair: selectedPair, timeframe: selectedTf, result,
           timestamp: new Date(), entryTime: entry, expiryTime: expiry,
-        }, ...prev].slice(0, 50));
+          outcome: null,
+        }, ...prev].slice(0, 60));
       } else {
         setEntryTime(null);
         setExpiryTime(null);
       }
     }, 1400);
   }, [selectedPair, selectedTf, liveMarket, isAnalyzing]);
+
+  const setOutcome = (id: string, outcome: SignalOutcome) => {
+    setHistory(prev => prev.map(h => h.id === id ? { ...h, outcome: h.outcome === outcome ? null : outcome } : h));
+  };
 
   const isBuy = currentSignal?.direction === "BUY";
   const gradeLabel = (g: SignalResult["grade"]) =>
@@ -353,9 +382,9 @@ export default function Home() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="text-sm font-black text-white">Karthik<span className="text-cyan-400"> Lee's</span></h1>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">AI Engine v4</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">AI Engine v5</span>
               </div>
-              <p className="text-[9px] text-slate-600 font-mono">Real Indicator Confluence Engine</p>
+              <p className="text-[9px] text-slate-600 font-mono">9-Year Pro Confluence Engine</p>
             </div>
           </div>
           <SyncBadge market={liveMarket} />
@@ -366,10 +395,7 @@ export default function Home() {
 
         {/* ══ 1. CONTROLS ══ */}
         <div className="glass-panel-bright rounded-2xl p-4 flex flex-col gap-3">
-          <PairDropdown
-            selectedPair={selectedPair}
-            onSelect={p => { setSelectedPair(p); resetSignal(); }}
-          />
+          <PairDropdown selectedPair={selectedPair} onSelect={p => { setSelectedPair(p); resetSignal(); }} />
           <div className="grid grid-cols-4 gap-2">
             {TIMEFRAMES.map(tf => (
               <button key={tf.id} onClick={() => { setSelectedTf(tf.id); resetSignal(); }}
@@ -390,7 +416,7 @@ export default function Home() {
               : "border-cyan-500/60 bg-gradient-to-r from-cyan-500/20 to-violet-500/20 text-cyan-300 hover:border-cyan-400 hover:text-white hover:shadow-[0_0_30px_hsl(186_100%_50%/0.3)]"
             }`}>
             {isAnalyzing
-              ? <span className="flex items-center justify-center gap-2"><span className="w-5 h-5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />Analyzing 12 Indicators…</span>
+              ? <span className="flex items-center justify-center gap-2"><span className="w-5 h-5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />Analyzing 14 Indicators…</span>
               : !liveMarket
               ? <span className="flex items-center justify-center gap-2"><RefreshCw className="w-5 h-5 animate-spin" />Syncing…</span>
               : <span className="flex items-center justify-center gap-2"><Zap className="w-5 h-5" />Get Signal</span>
@@ -413,13 +439,18 @@ export default function Home() {
                 {liveMarket.structure.trend.toUpperCase()}
               </div>
             )}
+            {liveMarket && (
+              <div className="text-[9px] font-mono text-slate-500 px-2 py-1 rounded border border-white/8 bg-white/4">
+                {liveMarket.sessionName}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ══ 3. LIVE INDICATORS PANEL ══ */}
+        {/* ══ 3. LIVE INDICATORS ══ */}
         {liveMarket && <IndicatorsPanel market={liveMarket} />}
 
-        {/* ══ 4. LIVE PRICE + S/R ══ */}
+        {/* ══ 4. PRICE + S/R ══ */}
         {liveMarket && selectedPair && (
           <div className="glass-panel rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div className="flex items-center justify-between text-xs font-mono">
@@ -444,7 +475,6 @@ export default function Home() {
         {/* ══ 5. SIGNAL RESULT ══ */}
         {currentSignal && !isAnalyzing && (
           <>
-            {/* SKIP card */}
             {currentSignal.direction === "SKIP" && (
               <div className="animate-slide-up rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 overflow-hidden">
                 <div className="px-4 py-1.5 bg-amber-500/10 flex items-center justify-between text-[10px] font-bold font-mono">
@@ -466,13 +496,11 @@ export default function Home() {
               </div>
             )}
 
-            {/* BUY / SELL card */}
             {(currentSignal.direction === "BUY" || currentSignal.direction === "SELL") && entryTime && expiryTime && (
               <div className={`animate-slide-up rounded-2xl border-2 overflow-hidden ${
                 isBuy ? "border-emerald-500/60 shadow-[0_0_40px_hsl(152_70%_50%/0.15)]"
                       : "border-red-500/60 shadow-[0_0_40px_hsl(0_70%_55%/0.15)]"
               }`}>
-                {/* grade bar */}
                 <div className={`px-4 py-1.5 flex items-center justify-between text-[10px] font-bold font-mono ${isBuy ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
                   <span className={isBuy ? "text-emerald-400" : "text-red-400"}>{gradeLabel(currentSignal.grade)}</span>
                   <div className="flex items-center gap-3">
@@ -483,7 +511,6 @@ export default function Home() {
 
                 <div className={`p-5 flex flex-col gap-4 ${isBuy ? "bg-emerald-500/5" : "bg-red-500/5"}`}>
 
-                  {/* BIG direction */}
                   <div className="flex flex-col items-center py-2">
                     {isBuy
                       ? <div className="flex items-center gap-3"><ChevronUp className="w-20 h-20 text-emerald-400" strokeWidth={3} /><span className="text-7xl font-black text-emerald-400 tracking-widest">BUY</span></div>
@@ -491,7 +518,6 @@ export default function Home() {
                     }
                   </div>
 
-                  {/* Key reason */}
                   <div className={`flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold ${
                     isBuy ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
                           : "bg-red-500/10 border border-red-500/20 text-red-300"
@@ -500,33 +526,27 @@ export default function Home() {
                     <span>{currentSignal.keyReason}</span>
                   </div>
 
-                  {/* Indicator snapshot row */}
+                  {/* Indicator snapshot */}
                   <div className="grid grid-cols-4 gap-2">
-                    <RSIGauge value={currentSignal.rsi} />
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className={`text-lg font-black font-mono ${currentSignal.rsi < 30 ? "text-emerald-400" : currentSignal.rsi > 70 ? "text-red-400" : "text-slate-400"}`}>{currentSignal.rsi.toFixed(0)}</div>
+                      <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">RSI</div>
+                      <div className={`text-[8px] font-bold ${currentSignal.rsi < 30 ? "text-emerald-400" : currentSignal.rsi > 70 ? "text-red-400" : "text-slate-500"}`}>{currentSignal.rsi < 30 ? "OVERSOLD" : currentSignal.rsi > 70 ? "OVERBOUGHT" : "NEUTRAL"}</div>
+                    </div>
                     <div className="flex flex-col items-center gap-0.5">
                       <div className={`text-lg font-black font-mono ${currentSignal.adx > 25 ? "text-cyan-400" : "text-slate-500"}`}>{currentSignal.adx.toFixed(0)}</div>
                       <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">ADX</div>
-                      <div className={`text-[8px] font-bold ${currentSignal.adx > 30 ? "text-cyan-400" : currentSignal.adx > 20 ? "text-slate-400" : "text-slate-600"}`}>
-                        {currentSignal.adx > 30 ? "TRENDING" : currentSignal.adx > 20 ? "MODERATE" : "WEAK"}
-                      </div>
+                      <div className={`text-[8px] font-bold ${currentSignal.adx > 30 ? "text-cyan-400" : currentSignal.adx > 20 ? "text-slate-400" : "text-slate-600"}`}>{currentSignal.adx > 30 ? "TRENDING" : currentSignal.adx > 20 ? "MODERATE" : "WEAK"}</div>
                     </div>
                     <div className="flex flex-col items-center gap-0.5">
-                      <div className={`text-base font-black font-mono ${currentSignal.macdDir === "bullish" ? "text-emerald-400" : "text-red-400"}`}>
-                        {currentSignal.macdDir === "bullish" ? "▲" : "▼"}
-                      </div>
+                      <div className={`text-base font-black font-mono ${currentSignal.macdDir === "bullish" ? "text-emerald-400" : "text-red-400"}`}>{currentSignal.macdDir === "bullish" ? "▲" : "▼"}</div>
                       <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">MACD</div>
-                      <div className={`text-[8px] font-bold ${currentSignal.macdDir === "bullish" ? "text-emerald-400" : "text-red-400"}`}>
-                        {currentSignal.macdDir.toUpperCase()}
-                      </div>
+                      <div className={`text-[8px] font-bold ${currentSignal.macdDir === "bullish" ? "text-emerald-400" : "text-red-400"}`}>{currentSignal.macdDir.toUpperCase()}</div>
                     </div>
                     <div className="flex flex-col items-center gap-0.5">
-                      <div className={`text-sm font-black font-mono ${currentSignal.stochK < 20 ? "text-emerald-400" : currentSignal.stochK > 80 ? "text-red-400" : "text-slate-400"}`}>
-                        {currentSignal.stochK.toFixed(0)}/{currentSignal.stochD.toFixed(0)}
-                      </div>
+                      <div className={`text-sm font-black font-mono ${currentSignal.stochK < 20 ? "text-emerald-400" : currentSignal.stochK > 80 ? "text-red-400" : "text-slate-400"}`}>{currentSignal.stochK.toFixed(0)}/{currentSignal.stochD.toFixed(0)}</div>
                       <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">STOCH</div>
-                      <div className={`text-[8px] font-bold ${currentSignal.stochK < 20 ? "text-emerald-400" : currentSignal.stochK > 80 ? "text-red-400" : "text-slate-500"}`}>
-                        {currentSignal.stochK < 20 ? "OVERSOLD" : currentSignal.stochK > 80 ? "OVERBOUGHT" : "NEUTRAL"}
-                      </div>
+                      <div className={`text-[8px] font-bold ${currentSignal.stochK < 20 ? "text-emerald-400" : currentSignal.stochK > 80 ? "text-red-400" : "text-slate-500"}`}>{currentSignal.stochK < 20 ? "OVERSOLD" : currentSignal.stochK > 80 ? "OVERBOUGHT" : "NEUTRAL"}</div>
                     </div>
                   </div>
 
@@ -535,7 +555,7 @@ export default function Home() {
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-1.5">
                         <Layers className="w-3 h-3 text-slate-600" />
-                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Patterns Detected</span>
+                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Patterns & Confluences</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {currentSignal.patternNames.map(p => (
@@ -548,7 +568,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* Confirmed factors list */}
+                  {/* Confirmed factors */}
                   {currentSignal.factors.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-1.5">
@@ -556,7 +576,7 @@ export default function Home() {
                         <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Confirmed Signals ({currentSignal.factors.length})</span>
                       </div>
                       <div className="flex flex-col gap-1">
-                        {currentSignal.factors.slice(0, 6).map((f, i) => (
+                        {currentSignal.factors.slice(0, 7).map((f, i) => (
                           <div key={i} className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg ${
                             f.weight >= 2.0 ? (isBuy ? "bg-emerald-500/10 border border-emerald-500/15" : "bg-red-500/10 border border-red-500/15")
                                            : "bg-white/3 border border-white/6"
@@ -566,8 +586,8 @@ export default function Home() {
                             <span className={`ml-auto font-mono text-[9px] font-bold ${f.weight >= 2.0 ? "text-slate-400" : "text-slate-600"}`}>{f.weight.toFixed(1)}</span>
                           </div>
                         ))}
-                        {currentSignal.factors.length > 6 && (
-                          <div className="text-[10px] text-slate-600 font-mono text-center">+{currentSignal.factors.length - 6} more signals</div>
+                        {currentSignal.factors.length > 7 && (
+                          <div className="text-[10px] text-slate-600 font-mono text-center">+{currentSignal.factors.length - 7} more signals</div>
                         )}
                       </div>
                     </div>
@@ -593,14 +613,14 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Pair info */}
+                  {/* Pair info — no payout % */}
                   <div className="flex items-center justify-center gap-3 text-xs text-slate-400 flex-wrap">
                     <span className="font-bold text-white">{selectedPair?.name}</span>
                     {selectedPair?.isOTC && <span className="text-[9px] font-bold text-violet-400 bg-violet-500/15 px-1.5 py-0.5 rounded border border-violet-500/30">OTC</span>}
                     <span className="text-slate-600">·</span>
                     <span className="font-mono text-cyan-400 font-bold">{selectedTf}</span>
                     <span className="text-slate-600">·</span>
-                    <span className="font-mono">{selectedPair?.profitability}% payout</span>
+                    <span className="font-mono text-slate-500">{currentSignal.grade} SIGNAL</span>
                   </div>
                 </div>
               </div>
@@ -616,7 +636,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ══ 6. SIGNAL HISTORY ══ */}
+        {/* ══ 6. SIGNAL HISTORY WITH WIN/LOSS TOGGLES ══ */}
         {history.length > 0 && (
           <div className="glass-panel rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
@@ -626,16 +646,23 @@ export default function Home() {
               </div>
               <span className="text-[10px] text-slate-600 font-mono">{history.length} signals</span>
             </div>
-            <div className="max-h-64 overflow-y-auto scrollbar-thin">
+
+            {/* Win rate bar */}
+            <WinRateBar history={history} />
+
+            <div className="max-h-80 overflow-y-auto scrollbar-thin">
               {history.map(entry => (
-                <div key={entry.id} className="history-row flex items-center justify-between px-4 py-3 border-b border-white/4 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg ${
+                <div key={entry.id} className={`flex items-center justify-between px-4 py-3 border-b border-white/4 last:border-0 transition-colors ${
+                  entry.outcome === "win" ? "bg-emerald-500/5" : entry.outcome === "loss" ? "bg-red-500/5" : ""
+                }`}>
+                  {/* Left: direction icon + info */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center font-black text-lg ${
                       entry.result.direction === "BUY" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
                     }`}>
                       {entry.result.direction === "BUY" ? "↑" : "↓"}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-bold text-white">{entry.pair.name}</span>
                         {entry.pair.isOTC && <span className="text-[9px] text-violet-400">OTC</span>}
@@ -656,8 +683,31 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  <div className={`text-base font-black ${entry.result.direction === "BUY" ? "text-emerald-400" : "text-red-400"}`}>
-                    {entry.result.direction}
+
+                  {/* Right: WIN/LOSS toggles */}
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <button
+                      onClick={() => setOutcome(entry.id, "win")}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-black border transition-all ${
+                        entry.outcome === "win"
+                          ? "bg-emerald-500/25 border-emerald-400/60 text-emerald-300 shadow-[0_0_10px_hsl(152_70%_50%/0.3)]"
+                          : "bg-white/4 border-white/10 text-slate-600 hover:border-emerald-500/40 hover:text-emerald-500"
+                      }`}
+                    >
+                      <Trophy className="w-3 h-3" />
+                      WIN
+                    </button>
+                    <button
+                      onClick={() => setOutcome(entry.id, "loss")}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-black border transition-all ${
+                        entry.outcome === "loss"
+                          ? "bg-red-500/25 border-red-400/60 text-red-300 shadow-[0_0_10px_hsl(0_70%_55%/0.3)]"
+                          : "bg-white/4 border-white/10 text-slate-600 hover:border-red-500/40 hover:text-red-500"
+                      }`}
+                    >
+                      <XCircle className="w-3 h-3" />
+                      LOSS
+                    </button>
                   </div>
                 </div>
               ))}
@@ -668,7 +718,7 @@ export default function Home() {
       </div>
 
       <div className="text-center py-4 text-[10px] text-slate-700 font-mono">
-        KARTHIK LEE'S AI ENGINE v4.0 · EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE
+        KARTHIK LEE'S AI ENGINE v5.0 · EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE
       </div>
     </div>
   );
