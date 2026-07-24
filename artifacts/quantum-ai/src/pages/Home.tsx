@@ -313,6 +313,176 @@ function WinRateBar({ history }: { history: SignalHistoryEntry[] }) {
   );
 }
 
+/* ── Martingale Calculator ── */
+function MartingalePanel() {
+  const [base, setBase]             = useState("1");
+  const [multiplier, setMultiplier] = useState(2.2);
+  const [step, setStep]             = useState(1); // 1-indexed current step
+  const PAYOUT = 0.85; // Quotex typical OTC payout
+  const MAX_STEPS = 6;
+
+  const baseVal = Math.max(0.01, parseFloat(base) || 1);
+
+  // Stake at each step: base * multiplier^(step-1)
+  const stakes = Array.from({ length: MAX_STEPS }, (_, i) =>
+    parseFloat((baseVal * Math.pow(multiplier, i)).toFixed(2))
+  );
+
+  // Total already lost before current step
+  const totalLost   = parseFloat(stakes.slice(0, step - 1).reduce((a, b) => a + b, 0).toFixed(2));
+  const currentStake = stakes[step - 1];
+  // Net profit if win at current step (stake × payout − total_lost)
+  const profit = parseFloat((currentStake * PAYOUT - totalLost).toFixed(2));
+
+  const handleWin  = () => setStep(1);
+  const handleLoss = () => setStep(s => Math.min(s + 1, MAX_STEPS));
+  const handleReset = () => setStep(1);
+
+  return (
+    <div className="glass-panel rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Layers className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-xs font-bold text-slate-300 uppercase tracking-widest font-mono">Martingale Recovery</span>
+          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400">OTC MODE</span>
+        </div>
+        {step > 1 && (
+          <button onClick={handleReset} className="text-[9px] text-slate-600 hover:text-slate-400 font-mono transition-colors">RESET</button>
+        )}
+      </div>
+
+      <div className="px-4 py-3 flex flex-col gap-3">
+
+        {/* Base stake + multiplier row */}
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <div className="text-[9px] text-slate-500 uppercase tracking-widest font-mono mb-1.5">Base Stake</div>
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus-within:border-cyan-500/40">
+              <span className="text-slate-500 font-mono text-xs font-bold">$</span>
+              <input
+                type="number"
+                min="0.1"
+                step="0.5"
+                value={base}
+                onChange={e => { setBase(e.target.value); setStep(1); }}
+                className="flex-1 bg-transparent text-white font-black text-sm font-mono outline-none w-16"
+              />
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="text-[9px] text-slate-500 uppercase tracking-widest font-mono mb-1.5">Multiplier</div>
+            <div className="flex gap-1">
+              {[2.0, 2.2, 2.3].map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setMultiplier(m); setStep(1); }}
+                  className={`flex-1 py-2 rounded-lg text-xs font-black border transition-all ${
+                    multiplier === m
+                      ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-300 shadow-[0_0_10px_hsl(186_100%_50%/0.15)]"
+                      : "border-white/10 bg-white/4 text-slate-500 hover:border-white/20"
+                  }`}
+                >
+                  {m}×
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Step grid — 6 columns */}
+        <div className="grid grid-cols-6 gap-1.5">
+          {stakes.map((stake, i) => {
+            const stepNum = i + 1;
+            const isActive = stepNum === step;
+            const isPast   = stepNum < step;
+            return (
+              <div
+                key={stepNum}
+                className={`flex flex-col items-center py-2 px-1 rounded-lg border text-center transition-all ${
+                  isActive
+                    ? "border-amber-500/60 bg-amber-500/15 shadow-[0_0_12px_hsl(45_100%_50%/0.2)]"
+                    : isPast
+                    ? "border-red-500/30 bg-red-500/8 opacity-70"
+                    : "border-white/8 bg-white/3 opacity-35"
+                }`}
+              >
+                <div className={`text-[8px] font-bold font-mono ${isActive ? "text-amber-400" : isPast ? "text-red-400" : "text-slate-600"}`}>
+                  S{stepNum}
+                </div>
+                <div className={`text-xs font-black font-mono mt-0.5 ${isActive ? "text-white" : isPast ? "text-red-300" : "text-slate-600"}`}>
+                  ${stake}
+                </div>
+                <div className={`text-[7px] font-bold mt-0.5 ${isActive ? "text-amber-400" : isPast ? "text-red-500" : "text-slate-700"}`}>
+                  {isPast ? "LOST" : isActive ? "NOW" : ""}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="px-2 py-2 rounded-lg bg-white/5 border border-white/8">
+            <div className="text-[9px] text-slate-500 font-mono uppercase">Lost So Far</div>
+            <div className="text-sm font-black text-red-400 font-mono">${totalLost.toFixed(2)}</div>
+            <div className="text-[8px] text-slate-600 font-mono">{step - 1} trades</div>
+          </div>
+          <div className="px-2 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <div className="text-[9px] text-amber-400 font-mono uppercase font-bold">Enter Now</div>
+            <div className="text-sm font-black text-white font-mono">${currentStake}</div>
+            <div className="text-[8px] text-amber-500 font-mono">Step {step}</div>
+          </div>
+          <div className="px-2 py-2 rounded-lg bg-white/5 border border-white/8">
+            <div className="text-[9px] text-slate-500 font-mono uppercase">If Win</div>
+            <div className={`text-sm font-black font-mono ${profit >= 0 ? "text-emerald-400" : "text-orange-400"}`}>
+              {profit >= 0 ? "+" : ""}${profit}
+            </div>
+            <div className="text-[8px] text-slate-600 font-mono">net profit</div>
+          </div>
+        </div>
+
+        {/* WIN / LOSS action buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleWin}
+            className="flex items-center justify-center gap-2 py-3 rounded-xl border border-emerald-500/50 bg-emerald-500/15 text-emerald-300 font-black text-sm hover:border-emerald-400 hover:shadow-[0_0_20px_hsl(152_70%_50%/0.25)] transition-all active:scale-95"
+          >
+            <Trophy className="w-4 h-4" />
+            WIN — RESET
+          </button>
+          <button
+            onClick={handleLoss}
+            disabled={step >= MAX_STEPS}
+            className={`flex items-center justify-center gap-2 py-3 rounded-xl border font-black text-sm transition-all active:scale-95 ${
+              step >= MAX_STEPS
+                ? "border-red-500/20 bg-red-500/5 text-red-800 cursor-not-allowed"
+                : "border-red-500/50 bg-red-500/15 text-red-300 hover:border-red-400 hover:shadow-[0_0_20px_hsl(0_70%_55%/0.25)]"
+            }`}
+          >
+            <XCircle className="w-4 h-4" />
+            {step >= MAX_STEPS ? "MAX STEP" : "LOSS — NEXT"}
+          </button>
+        </div>
+
+        {/* Warning at deep levels */}
+        {step >= 4 && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg border border-red-500/30 bg-red-500/8">
+            <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+            <p className="text-[10px] text-red-400 font-mono leading-relaxed">
+              Step {step} — High capital at risk. OTC manipulation &amp; error candles are common at this depth. Wait for a very strong confluence signal before entering.
+            </p>
+          </div>
+        )}
+
+        <div className="text-[9px] text-slate-700 font-mono text-center">
+          Calculated at 85% Quotex payout · Win resets to Step 1
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════ */
@@ -636,7 +806,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* ══ 6. SIGNAL HISTORY WITH WIN/LOSS TOGGLES ══ */}
+        {/* ══ 6. MARTINGALE CALCULATOR ══ */}
+        <MartingalePanel />
+
+        {/* ══ 7. SIGNAL HISTORY WITH WIN/LOSS TOGGLES ══ */}
         {history.length > 0 && (
           <div className="glass-panel rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
