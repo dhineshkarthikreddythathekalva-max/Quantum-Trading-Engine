@@ -919,10 +919,22 @@ function engineOmegaQX(
   // Count how many engines agree on direction
   const passedEngines = engines.filter(e => e.passed && e.direction !== "neutral");
 
-  // Determine majority direction
+  // Weighted voting: each engine's vote = confidence × weight
+  let upWeight = 0, downWeight = 0;
+  for (const e of passedEngines) {
+    const vote = e.confidence * e.weight;
+    if (e.direction === "up") upWeight += vote;
+    else if (e.direction === "down") downWeight += vote;
+  }
   const upCount = passedEngines.filter(e => e.direction === "up").length;
   const downCount = passedEngines.filter(e => e.direction === "down").length;
-  const majorityDir = upCount > downCount ? "up" : downCount > upCount ? "down" : "neutral";
+  // Use weighted direction when counts are tied, otherwise majority count
+  let majorityDir: "up" | "down" | "neutral";
+  if (upCount > downCount) majorityDir = "up";
+  else if (downCount > upCount) majorityDir = "down";
+  else if (upWeight > downWeight) majorityDir = "up";
+  else if (downWeight > upWeight) majorityDir = "down";
+  else majorityDir = "neutral";
 
   // Count agreeing engines
   const agreeingCount = majorityDir === "up" ? upCount : downCount;
@@ -1032,11 +1044,21 @@ function engineQuotexMaster(
   // Weighted fusion of all passed engines
   const passedEngines = engines.filter(e => e.passed && e.direction !== "neutral");
   let weightedSum = 0, totalWeight = 0;
+  let upWeight = 0, downWeight = 0;
 
   for (const e of passedEngines) {
     weightedSum += e.confidence * e.weight;
     totalWeight += e.weight;
+    if (e.direction === "up") upWeight += e.confidence * e.weight;
+    else if (e.direction === "down") downWeight += e.confidence * e.weight;
     reasons.push(`${e.name}: ${e.direction} (${e.confidence.toFixed(0)}% × ${(e.weight * 100).toFixed(0)}%)`);
+  }
+
+  // If OMEGA QX is neutral, use weighted direction from all engines as fallback
+  let finalDirection: "up" | "down" | "neutral" = omega.direction;
+  if (finalDirection === "neutral" && passedEngines.length >= 2) {
+    if (upWeight > downWeight * 1.1) finalDirection = "up";
+    else if (downWeight > upWeight * 1.1) finalDirection = "down";
   }
 
   let finalConfidence = totalWeight > 0 ? weightedSum / totalWeight : 0;
@@ -1074,12 +1096,12 @@ function engineQuotexMaster(
 
   return {
     name: "QUOTEX MASTER",
-    direction: omega.direction,
+    direction: finalDirection,
     confidence: finalConfidence,
     weight: 0.902,
-    passed: omega.passed,
+    passed: omega.passed || (finalDirection !== "neutral" && passedEngines.length >= 2),
     reasons: [
-      `Final fusion: ${omega.direction} @ ${finalConfidence}% (${grade})`,
+      `Final fusion: ${finalDirection} @ ${finalConfidence}% (${grade})`,
       ...reasons,
     ],
   };
