@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: quotex
+    description: Read-only Quotex market data
 paths:
   /healthz:
     get:
@@ -24,6 +26,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /quotex/market:
+    get:
+      operationId: getQuotexMarket
+      tags: [quotex]
+      summary: Get read-only Quotex market candles
+      description: Returns live Quotex candles when the server is configured with a valid session.
+      parameters:
+        - name: asset
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 30
+            maximum: 3600
+      responses:
+        "200":
+          description: Market status and candles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotexMarketResponse"
+        "400":
+          description: Invalid market request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Quotex feed is unavailable or not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotexMarketResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +74,50 @@ components:
           type: string
       required:
         - status
+    QuotexCandle:
+      type: object
+      properties:
+        time:
+          type: integer
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: number
+      required: [time, open, high, low, close, volume]
+    QuotexMarketResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [live, connecting, unavailable, error]
+        source:
+          type: string
+          enum: [quotex, none]
+        configured:
+          type: boolean
+        message:
+          type: string
+        asset:
+          type: ["string", "null"]
+        period:
+          type: ["integer", "null"]
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotexCandle"
+        updatedAt:
+          type: ["integer", "null"]
+      required: [status, source, configured, message, asset, period, candles, updatedAt]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 

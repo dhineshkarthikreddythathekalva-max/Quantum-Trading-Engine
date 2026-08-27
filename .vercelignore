@@ -1,0 +1,13 @@
+node_modules
+.freebuff
+.cache
+.local
+*.log
+*.log.err
+*.pid
+.replit
+.sessions.pkl
+artifacts/api-server
+artifacts/ml-service
+artifacts/mockup-sandbox
+artifacts/quotex-bridge

@@ -1,0 +1,8 @@
+# API-Quotex — the library the user asked us to use for live Quotex data.
+# Repo: https://github.com/A11ksa/API-Quotex (MIT)
+api-quotex @ git+https://github.com/A11ksa/API-Quotex.git
+# api_quotex imports these at module level but omits them from its own deps
+pandas>=2.2
+loguru>=0.7
+cloudscraper>=1.2.71
+beautifulsoup4>=4.12

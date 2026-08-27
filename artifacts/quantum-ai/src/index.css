@@ -104,6 +104,12 @@
   100% { transform: translateY(0); opacity: 1; }
 }
 
+/* Loader candlesticks: bars grow/shrink like forming candles */
+@keyframes candle-flicker {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.65; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
 .animate-slide-up { animation: slide-up 0.4s ease forwards; }
 .animate-glow-buy { animation: glow-buy 2s ease-in-out infinite; }
 .animate-glow-sell { animation: glow-sell 2s ease-in-out infinite; }
@@ -111,6 +117,19 @@
 .animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
 .animate-spin-ring { animation: spin-ring 2s linear infinite; }
 .animate-number-tick { animation: number-tick 0.3s ease forwards; }
+.loader-candle {
+  transform-origin: center;
+  animation: candle-flicker 1s ease-in-out infinite;
+}
+
+/* Loader sweep: thin line crossing the candlestick strip during final stages */
+@keyframes loader-sweep {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(110%); }
+}
+.loader-sweep {
+  animation: loader-sweep 1.6s ease-in-out infinite;
+}
 
 .glass-panel {
   background: hsl(220 40% 9% / 0.85);

@@ -13,7 +13,12 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  GetQuotexMarketParams,
+  HealthStatus,
+  QuotexMarketResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -92,6 +97,103 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns live Quotex candles when the server is configured with a valid session.
+ * @summary Get read-only Quotex market candles
+ */
+export const getGetQuotexMarketUrl = (params: GetQuotexMarketParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/quotex/market?${stringifiedParams}`
+    : `/api/quotex/market`;
+};
+
+export const getQuotexMarket = async (
+  params: GetQuotexMarketParams,
+  options?: RequestInit,
+): Promise<QuotexMarketResponse> => {
+  return customFetch<QuotexMarketResponse>(getGetQuotexMarketUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetQuotexMarketQueryKey = (params?: GetQuotexMarketParams) => {
+  return [`/api/quotex/market`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetQuotexMarketQueryOptions = <
+  TData = Awaited<ReturnType<typeof getQuotexMarket>>,
+  TError = ErrorType<ErrorResponse | QuotexMarketResponse>,
+>(
+  params: GetQuotexMarketParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getQuotexMarket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetQuotexMarketQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuotexMarket>>> = ({
+    signal,
+  }) => getQuotexMarket(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getQuotexMarket>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetQuotexMarketQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getQuotexMarket>>
+>;
+export type GetQuotexMarketQueryError = ErrorType<
+  ErrorResponse | QuotexMarketResponse
+>;
+
+/**
+ * @summary Get read-only Quotex market candles
+ */
+
+export function useGetQuotexMarket<
+  TData = Awaited<ReturnType<typeof getQuotexMarket>>,
+  TError = ErrorType<ErrorResponse | QuotexMarketResponse>,
+>(
+  params: GetQuotexMarketParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getQuotexMarket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetQuotexMarketQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

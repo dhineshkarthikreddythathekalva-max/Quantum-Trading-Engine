@@ -1,0 +1,23 @@
+2026-08-26 12:13:59.993 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-26 12:13:59.994 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-26 12:13:59.994 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-26 12:14:00.391 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-26 12:14:00.392 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-26 12:14:00.392 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-26 12:14:00.393 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-26 12:14:00.411 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-26 12:14:00.412 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-26 12:14:01.191 | INFO     | api_quotex.websocket_client:connect:186 - Connected to LIVE region successfully
+2026-08-26 12:14:01.695 | INFO     | api_quotex.websocket_client:_send_handshake:451 - Authentication successful (via instruments/list header)
+2026-08-26 12:14:01.695 | INFO     | api_quotex.client:_on_authenticated:1148 - Authenticated with server
+2026-08-26 12:14:01.695 | INFO     | api_quotex.client:_start_regular_connection:240 - Connected to region: DEMO
+2026-08-26 12:14:01.970 | INFO     | api_quotex.client:_on_assets_updated:886 - Stored 92 assets from instruments/list
+2026-08-26 12:14:01.971 | INFO     | api_quotex.client:_on_json_data:1643 - Received JSON event: type=authorization/reject, data={}
+2026-08-26 12:14:01.971 | INFO     | api_quotex.websocket_client:_handle_disconnect_message:666 - Received Socket.IO disconnect message ('41')
+2026-08-26 12:14:01.971 | INFO     | api_quotex.websocket_client:_handle_disconnect:972 - Handling WebSocket disconnection
+2026-08-26 12:14:01.972 | INFO     | api_quotex.websocket_client:_handle_disconnect:990 - Attempting reconnection 1/5
+2026-08-26 12:14:03.784 | ERROR    | api_quotex.monitoring:record_error:175 - [MEDIUM] connection: Attempting reconnection 1/5
+2026-08-26 12:14:03.786 | INFO     | api_quotex.websocket_client:receive_messages:342 - WebSocket connection closed normally (code 1005 or OK)
+2026-08-26 12:14:03.788 | INFO     | api_quotex.websocket_client:_handle_disconnect:972 - Handling WebSocket disconnection
+2026-08-26 12:14:03.788 | INFO     | api_quotex.websocket_client:_handle_disconnect:990 - Attempting reconnection 2/5
+2026-08-26 12:14:07.041 | ERROR    | api_quotex.monitoring:record_error:175 - [MEDIUM] connection: Attempting reconnection 2/5

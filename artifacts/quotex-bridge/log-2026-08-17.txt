@@ -1,0 +1,205 @@
+2026-08-17 18:05:39.768 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:05:39.768 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:05:39.768 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:06:34.225 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:06:34.225 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:06:34.226 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:32:32.959 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:32:32.959 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:32:32.959 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:38:39.009 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:38:39.010 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:38:39.010 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:39:08.043 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:39:08.043 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:39:08.043 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:39:08.208 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-17 18:39:08.208 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-17 18:39:08.208 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-17 18:39:08.208 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-17 18:39:08.216 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:08.216 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:09.862 | INFO     | api_quotex.websocket_client:connect:187 - Connected to LIVE region successfully
+2026-08-17 18:39:09.862 | ERROR    | api_quotex.websocket_client:_send_handshake:506 - Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:09.862 | ERROR    | api_quotex.monitoring:record_error:175 - [CRITICAL] connection: Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:09.862 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:09.863 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:10.620 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:39:10.620 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:10.620 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:10.620 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-17 18:39:12.423 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:12.423 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:14.085 | INFO     | api_quotex.websocket_client:connect:187 - Connected to LIVE region successfully
+2026-08-17 18:39:14.086 | ERROR    | api_quotex.websocket_client:_send_handshake:506 - Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:14.086 | ERROR    | api_quotex.monitoring:record_error:175 - [CRITICAL] connection: Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:14.086 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:14.086 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:14.848 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:39:14.848 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:14.848 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:14.848 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 3.24 seconds before next reconnect attempt
+2026-08-17 18:39:18.095 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 2 attempts (Code: None)
+2026-08-17 18:39:18.096 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:39:18.096 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:39:18.096 | INFO     | api_quotex.client:disconnect:315 - Disconnecting from Quotex...
+2026-08-17 18:39:18.097 | INFO     | api_quotex.websocket_client:disconnect:217 - Disconnecting from WebSocket
+2026-08-17 18:39:18.097 | INFO     | api_quotex.client:disconnect:351 - Disconnected successfully
+2026-08-17 18:39:38.850 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:39:38.850 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:39:38.850 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:39:39.032 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-17 18:39:39.032 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-17 18:39:39.032 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-17 18:39:39.032 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-17 18:39:39.058 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:39.058 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:39.311 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:39:39.312 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:39:39.312 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:39:39.312 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:39.312 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:39.312 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-17 18:39:41.121 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:41.122 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:42.805 | INFO     | api_quotex.websocket_client:connect:187 - Connected to LIVE region successfully
+2026-08-17 18:39:42.806 | ERROR    | api_quotex.websocket_client:_send_handshake:506 - Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:42.806 | ERROR    | api_quotex.monitoring:record_error:175 - [CRITICAL] connection: Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:42.806 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:42.807 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:43.589 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:39:43.589 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:43.589 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:43.589 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 3.24 seconds before next reconnect attempt
+2026-08-17 18:39:46.842 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 2 attempts (Code: None)
+2026-08-17 18:39:46.842 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:39:46.842 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:39:46.842 | INFO     | api_quotex.client:disconnect:315 - Disconnecting from Quotex...
+2026-08-17 18:39:46.842 | INFO     | api_quotex.websocket_client:disconnect:217 - Disconnecting from WebSocket
+2026-08-17 18:39:46.842 | INFO     | api_quotex.client:disconnect:351 - Disconnected successfully
+2026-08-17 18:39:54.798 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:39:54.798 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:39:54.798 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:39:54.984 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-17 18:39:54.984 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-17 18:39:54.984 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-17 18:39:54.984 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-17 18:39:54.996 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:54.996 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:56.682 | INFO     | api_quotex.websocket_client:connect:187 - Connected to LIVE region successfully
+2026-08-17 18:39:56.682 | ERROR    | api_quotex.websocket_client:_send_handshake:506 - Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:56.682 | ERROR    | api_quotex.monitoring:record_error:175 - [CRITICAL] connection: Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:56.682 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:56.682 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:39:57.441 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:39:57.441 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:57.441 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:57.441 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-17 18:39:59.260 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:59.260 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:39:59.498 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:39:59.498 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:39:59.498 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:39:59.498 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:59.498 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:39:59.498 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 3.24 seconds before next reconnect attempt
+2026-08-17 18:40:02.744 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 2 attempts (Code: None)
+2026-08-17 18:40:02.744 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:40:02.745 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:40:02.745 | INFO     | api_quotex.client:disconnect:315 - Disconnecting from Quotex...
+2026-08-17 18:40:02.745 | INFO     | api_quotex.websocket_client:disconnect:217 - Disconnecting from WebSocket
+2026-08-17 18:40:02.745 | INFO     | api_quotex.client:disconnect:351 - Disconnected successfully
+2026-08-17 18:42:33.226 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:42:33.226 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:42:33.226 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:42:33.407 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-17 18:42:33.407 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-17 18:42:33.407 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-17 18:42:33.407 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-17 18:42:33.416 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:42:33.416 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:42:35.123 | INFO     | api_quotex.websocket_client:connect:187 - Connected to LIVE region successfully
+2026-08-17 18:42:35.123 | ERROR    | api_quotex.websocket_client:_send_handshake:506 - Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:42:35.123 | ERROR    | api_quotex.monitoring:record_error:175 - [CRITICAL] connection: Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:42:35.124 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:42:35.124 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:42:35.893 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:42:35.894 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:42:35.894 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:42:35.894 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-17 18:42:37.711 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:42:37.712 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:42:37.971 | WARNING  | api_quotex.websocket_client:connect:197 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:42:37.971 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:42:37.971 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:42:37.971 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:42:37.971 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:42:37.972 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 3.24 seconds before next reconnect attempt
+2026-08-17 18:42:41.225 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 2 attempts (Code: None)
+2026-08-17 18:42:41.226 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:42:41.226 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:42:41.226 | INFO     | api_quotex.client:disconnect:315 - Disconnecting from Quotex...
+2026-08-17 18:42:41.226 | INFO     | api_quotex.websocket_client:disconnect:217 - Disconnecting from WebSocket
+2026-08-17 18:42:41.227 | INFO     | api_quotex.client:disconnect:351 - Disconnected successfully
+2026-08-17 18:43:30.954 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:43:30.955 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:43:30.956 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:43:31.138 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-17 18:43:31.139 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-17 18:43:31.139 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-17 18:43:31.139 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-17 18:43:31.150 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:43:31.151 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:43:32.841 | INFO     | api_quotex.websocket_client:connect:187 - Connected to LIVE region successfully
+2026-08-17 18:43:32.842 | ERROR    | api_quotex.websocket_client:_send_handshake:509 - Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:43:32.842 | ERROR    | api_quotex.monitoring:record_error:175 - [CRITICAL] connection: Handshake failed: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:43:32.856 | WARNING  | api_quotex.websocket_client:connect:200 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:43:32.856 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: 'ClientConnection' object has no attribute 'closed'
+2026-08-17 18:43:33.655 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:43:33.656 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:43:33.656 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to DEMO: Failed to connect to any WebSocket endpoint
+2026-08-17 18:43:33.656 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-17 18:43:35.472 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:43:35.472 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:43:35.777 | WARNING  | api_quotex.websocket_client:connect:200 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:43:35.778 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: server rejected WebSocket connection: HTTP 429
+2026-08-17 18:43:35.778 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-17 18:43:35.778 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:43:35.778 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-17 18:43:35.778 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 3.24 seconds before next reconnect attempt
+2026-08-17 18:43:39.033 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 2 attempts (Code: None)
+2026-08-17 18:43:39.033 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:43:39.033 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 2 attempts
+2026-08-17 18:43:39.033 | INFO     | api_quotex.client:disconnect:315 - Disconnecting from Quotex...
+2026-08-17 18:43:39.033 | INFO     | api_quotex.websocket_client:disconnect:220 - Disconnecting from WebSocket
+2026-08-17 18:43:39.033 | INFO     | api_quotex.client:disconnect:351 - Disconnected successfully
+2026-08-17 18:44:08.006 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:44:08.006 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:44:08.006 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 18:44:08.174 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-17 18:44:08.174 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-17 18:44:08.174 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-17 18:44:08.174 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-17 18:44:08.186 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:44:08.187 | INFO     | api_quotex.websocket_client:connect:165 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-17 18:44:09.841 | INFO     | api_quotex.websocket_client:connect:198 - Connected to LIVE region successfully
+2026-08-17 18:44:10.650 | INFO     | api_quotex.websocket_client:_send_handshake:466 - Authentication successful (via instruments/list header)
+2026-08-17 18:44:10.651 | INFO     | api_quotex.client:_on_authenticated:1148 - Authenticated with server
+2026-08-17 18:44:10.651 | INFO     | api_quotex.client:_start_regular_connection:240 - Connected to region: DEMO
+2026-08-17 18:44:11.252 | INFO     | api_quotex.client:_on_assets_updated:886 - Stored 92 assets from instruments/list
+2026-08-17 18:44:11.252 | INFO     | api_quotex.client:_on_authenticated:1148 - Authenticated with server
+2026-08-17 18:44:11.253 | INFO     | api_quotex.client:_on_json_data:1643 - Received JSON event: type=s_balance/list, data={'liveBalance': 3195.19, 'demoBalance': 1287137.86, 'tournamentsBalances': {}, 'dayLimit': 0, 'dayBa
+2026-08-17 18:44:11.253 | INFO     | api_quotex.client:_on_json_data:1643 - Received JSON event: type=settings/list, data=[{'chart_id': 'graph', 'settings': '{"chartId":"graph","chartType":2,"currentExpirationTime":1786971
+2026-08-17 18:44:11.253 | INFO     | api_quotex.client:_on_json_data:1643 - Received JSON event: type=s_drawing/load, data={'list': []}
+2026-08-17 18:44:11.254 | INFO     | api_quotex.client:_on_json_data:1643 - Received JSON event: type=orders/opened/list, data=[]
+2026-08-17 18:44:11.306 | INFO     | api_quotex.client:_start_keep_alive_tasks:354 - Starting keep-alive tasks for regular connection...
+2026-08-17 18:44:11.306 | INFO     | api_quotex.client:_start_regular_connection:247 - Successfully connected and authenticated
+2026-08-17 18:44:11.307 | INFO     | api_quotex.client:disconnect:315 - Disconnecting from Quotex...
+2026-08-17 18:44:11.307 | INFO     | api_quotex.websocket_client:disconnect:231 - Disconnecting from WebSocket
+2026-08-17 18:44:12.083 | INFO     | api_quotex.client:disconnect:351 - Disconnected successfully
+2026-08-17 18:44:27.529 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 18:44:27.529 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 18:44:27.530 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-17 23:14:01.065 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-17 23:14:01.066 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-17 23:14:01.066 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully

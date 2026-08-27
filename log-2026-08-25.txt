@@ -1,0 +1,53 @@
+2026-08-25 16:32:12.974 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-25 16:32:12.975 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-25 16:32:12.975 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-25 16:32:27.777 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-25 16:32:27.777 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-25 16:32:27.777 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-25 16:32:28.022 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=False, persistent=False) with enhanced monitoring
+2026-08-25 16:32:28.022 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-25 16:32:28.023 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-25 16:32:28.023 | INFO     | api_quotex.client:_start_regular_connection:215 - Live mode: Using non-demo regions: ['LIVE']
+2026-08-25 16:32:28.036 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-25 16:32:28.037 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-25 16:32:28.056 | WARNING  | api_quotex.websocket_client:connect:196 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: BaseEventLoop.create_connection() got an unexpected keyword argument 'extra_headers'
+2026-08-25 16:32:28.057 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: BaseEventLoop.create_connection() got an unexpected keyword argument 'extra_headers'
+2026-08-25 16:32:28.057 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-25 16:32:28.057 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-25 16:32:28.057 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-25 16:32:28.057 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-25 16:32:29.864 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 1 attempts (Code: None)
+2026-08-25 16:32:29.864 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 1 attempts
+2026-08-25 16:32:29.865 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 1 attempts
+2026-08-25 16:33:00.478 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-25 16:33:00.478 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-25 16:33:00.478 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-25 16:33:13.349 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-25 16:33:13.349 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-25 16:33:13.350 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-25 16:37:51.296 | WARNING  | api_quotex.config:_load_config:105 - config.json not found, using default configuration
+2026-08-25 16:37:51.296 | WARNING  | api_quotex.config:_load_session:141 - session.json not found, using default session data
+2026-08-25 16:37:51.296 | INFO     | api_quotex.config:__init__:78 - Config instance initialized successfully
+2026-08-25 16:37:51.506 | INFO     | api_quotex.client:__init__:151 - Initialized Quotex client (demo=True, persistent=False) with enhanced monitoring
+2026-08-25 16:37:51.506 | INFO     | api_quotex.client:connect:181 - Connecting to Quotex...
+2026-08-25 16:37:51.507 | INFO     | api_quotex.client:_start_regular_connection:206 - Starting regular connection...
+2026-08-25 16:37:51.507 | INFO     | api_quotex.client:_start_regular_connection:212 - Demo mode: Using demo regions: ['DEMO', 'LIVE']
+2026-08-25 16:37:51.518 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: DEMO with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-25 16:37:51.518 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-25 16:37:51.536 | WARNING  | api_quotex.websocket_client:connect:196 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: BaseEventLoop.create_connection() got an unexpected keyword argument 'extra_headers'
+2026-08-25 16:37:51.537 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: BaseEventLoop.create_connection() got an unexpected keyword argument 'extra_headers'
+2026-08-25 16:37:51.537 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-25 16:37:51.537 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region DEMO: Failed to connect to any WebSocket endpoint
+2026-08-25 16:37:51.537 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to DEMO: Failed to connect to any WebSocket endpoint
+2026-08-25 16:37:51.537 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 1.80 seconds before next reconnect attempt
+2026-08-25 16:37:53.346 | INFO     | api_quotex.client:_start_regular_connection:235 - Trying region: LIVE with URL: wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-25 16:37:53.346 | INFO     | api_quotex.websocket_client:connect:154 - Attempting to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket
+2026-08-25 16:37:53.347 | WARNING  | api_quotex.websocket_client:connect:196 - Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: BaseEventLoop.create_connection() got an unexpected keyword argument 'extra_headers'
+2026-08-25 16:37:53.347 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to wss://ws2.qxbroker.com/socket.io/?EIO=3&transport=websocket: BaseEventLoop.create_connection() got an unexpected keyword argument 'extra_headers'
+2026-08-25 16:37:53.347 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any WebSocket endpoint (Code: None)
+2026-08-25 16:37:53.347 | WARNING  | api_quotex.client:_start_regular_connection:265 - Failed to connect to region LIVE: Failed to connect to any WebSocket endpoint
+2026-08-25 16:37:53.348 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Failed to connect to LIVE: Failed to connect to any WebSocket endpoint
+2026-08-25 16:37:53.348 | INFO     | api_quotex.client:_start_regular_connection:279 - Waiting 3.24 seconds before next reconnect attempt
+2026-08-25 16:37:56.597 | ERROR    | api_quotex.exceptions:__init__:14 - QuotexError: Failed to connect to any region after 2 attempts (Code: None)
+2026-08-25 16:37:56.597 | ERROR    | api_quotex.client:connect:195 - Connection failed: Failed to connect to any region after 2 attempts
+2026-08-25 16:37:56.597 | ERROR    | api_quotex.monitoring:record_error:175 - [HIGH] connection: Connection failed: Failed to connect to any region after 2 attempts

@@ -8,3 +8,60 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface QuotexCandle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export type QuotexMarketResponseStatus =
+  (typeof QuotexMarketResponseStatus)[keyof typeof QuotexMarketResponseStatus];
+
+export const QuotexMarketResponseStatus = {
+  live: "live",
+  connecting: "connecting",
+  unavailable: "unavailable",
+  error: "error",
+} as const;
+
+export type QuotexMarketResponseSource =
+  (typeof QuotexMarketResponseSource)[keyof typeof QuotexMarketResponseSource];
+
+export const QuotexMarketResponseSource = {
+  quotex: "quotex",
+  none: "none",
+} as const;
+
+export interface QuotexMarketResponse {
+  status: QuotexMarketResponseStatus;
+  source: QuotexMarketResponseSource;
+  configured: boolean;
+  message: string;
+  /** @nullable */
+  asset: string | null;
+  /** @nullable */
+  period: number | null;
+  candles: QuotexCandle[];
+  /** @nullable */
+  updatedAt: number | null;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type GetQuotexMarketParams = {
+  /**
+   * @minLength 2
+   */
+  asset: string;
+  /**
+   * @minimum 30
+   * @maximum 3600
+   */
+  period: number;
+};

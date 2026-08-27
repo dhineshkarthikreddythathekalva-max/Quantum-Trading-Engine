@@ -6,4 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./errorResponse";
+export * from "./getQuotexMarketParams";
 export * from "./healthStatus";
+export * from "./quotexCandle";
+export * from "./quotexMarketResponse";
+export * from "./quotexMarketResponseSource";
+export * from "./quotexMarketResponseStatus";

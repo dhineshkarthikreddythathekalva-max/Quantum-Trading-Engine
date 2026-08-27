@@ -2,29 +2,18 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+let runtimeErrorOverlay: any;
+try {
+  runtimeErrorOverlay = (await import("@replit/vite-plugin-runtime-error-modal")).default;
+} catch {
+  runtimeErrorOverlay = () => [];
+}
 
 const rawPort = process.env.PORT;
+const port = rawPort ? Number(rawPort) : 5173;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   base: basePath,
@@ -65,6 +54,21 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    // Proxy API calls (live Quotex data via the Python bridge) to the api-server
+    // during local development. Run it with: PORT=5000 pnpm --filter @workspace/api-server run dev
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:5000",
+        changeOrigin: true,
+      },
+      // Kimi (Moonshot AI) market analysis — proxied so the browser avoids CORS.
+      // Key lives in src/lib/kimi.ts. International platform endpoint.
+      "/kimi": {
+        target: "https://api.moonshot.ai",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/kimi/, ""),
+      },
     },
   },
   preview: {

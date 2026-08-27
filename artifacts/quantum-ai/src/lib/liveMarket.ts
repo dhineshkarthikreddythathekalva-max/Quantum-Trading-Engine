@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { API_BASE } from "./apiConfig";
 
 export interface Candle {
   open: number; high: number; low: number; close: number; volume: number;
@@ -67,6 +68,7 @@ export interface VolumeData {
 
 export interface LiveMarketState {
   price: number; priceChange: number;
+  source: "quotex" | "sim";
   candles: Candle[];
   indicators: Indicators;
   patterns: CandlePatterns;
@@ -546,9 +548,17 @@ function getSession(hour: number): { name: string; bias: "bullish" | "bearish" |
 
 /* ══════════════════════════════════════════════
    MASTER COMPUTE
+   Pass `candlesOverride` to analyze real Quotex candles from the API
+   instead of the simulated generator.
 ══════════════════════════════════════════════ */
-export function computeMarketState(pairId: string, syncCount: number): Omit<LiveMarketState, "lastSync" | "syncCount"> {
-  const candles   = buildCandles(pairId, syncCount, 80);
+export function computeMarketState(
+  pairId: string,
+  syncCount: number,
+  candlesOverride?: Candle[],
+): Omit<LiveMarketState, "lastSync" | "syncCount" | "source"> {
+  const candles = candlesOverride && candlesOverride.length >= 2
+    ? candlesOverride
+    : buildCandles(pairId, syncCount, 80);
   const n         = candles.length;
   const price     = candles[n - 1].close;
   const prevClose = candles[n - 2]?.close ?? price;
@@ -605,19 +615,151 @@ export function computeMarketState(pairId: string, syncCount: number): Omit<Live
   return { price, priceChange, candles, indicators, patterns, structure, sr, volume, sessionBias: session.bias, sessionName: session.name };
 }
 
-export function useLiveMarket(pairId: string | null): LiveMarketState | null {
+export function useLiveMarket(
+  pairId: string | null,
+  periodSeconds = 60,
+): LiveMarketState | null {
   const [state, setState] = useState<LiveMarketState | null>(null);
   const syncCountRef = useRef(80);
   useEffect(() => {
     if (!pairId) { setState(null); return; }
-    const sync = () => {
+    let cancelled = false;
+
+    const tick = async () => {
+      // 1) Try the live Quotex API (Python bridge proxied through /api).
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}`,
+        );
+        if (res.ok) {
+          const data = (await res.json()) as { status?: string; candles?: Candle[] };
+          if (!cancelled && data.status === "live" && (data.candles?.length ?? 0) >= 2) {
+            syncCountRef.current += 1;
+            const mkt = computeMarketState(pairId, syncCountRef.current, data.candles);
+            setState({ ...mkt, lastSync: new Date(), syncCount: syncCountRef.current, source: "quotex" });
+            return;
+          }
+        }
+      } catch {
+        // API or bridge unreachable — fall through to simulation.
+      }
+      if (cancelled) return;
+
+      // 2) Simulated fallback (same engine, synthetic candles).
       syncCountRef.current += 1;
-      const mkt = computeMarketState(pairId!, syncCountRef.current);
-      setState({ ...mkt, lastSync: new Date(), syncCount: syncCountRef.current });
+      const mkt = computeMarketState(pairId, syncCountRef.current);
+      setState({ ...mkt, lastSync: new Date(), syncCount: syncCountRef.current, source: "sim" });
     };
-    sync();
-    const t = setInterval(sync, 3000);
-    return () => clearInterval(t);
-  }, [pairId]);
+
+    tick();
+    const t = setInterval(tick, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [pairId, periodSeconds]);
   return state;
+}
+
+/* ══════════════════════════════════════════════
+   PAIR SCANNER — refreshes a batch of pairs every
+   `intervalMs` (default 5s) and returns the latest
+   computed market state for each pair id.
+
+   Live mode: when the Quotex bridge reports real
+   candles for a pair, they are used; each pair is
+   re-fetched at most once per `periodSeconds`
+   (min 30s) so dozens of pairs don't hammer the
+   bridge. Between fetches the last state is kept.
+   When the bridge is unreachable, pairs fall back
+   to the simulation engine (fresh every tick).
+══════════════════════════════════════════════ */
+export function usePairScanner(
+  pairIds: string[],
+  intervalMs = 5000,
+  periodSeconds = 60,
+): Record<string, LiveMarketState> {
+  const [states, setStates] = useState<Record<string, LiveMarketState>>({});
+  const syncRef = useRef<Record<string, number>>({});
+  const nextFetchRef = useRef<Record<string, number>>({});
+  const statesRef = useRef<Record<string, LiveMarketState>>({});
+  statesRef.current = states;
+  const key = pairIds.join("|");
+  const periodRef = useRef(periodSeconds);
+  periodRef.current = periodSeconds;
+
+  useEffect(() => {
+    let cancelled = false;
+    nextFetchRef.current = {}; // force fresh fetch when period/pair set changes
+
+    const fetchLive = async (id: string) => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}`,
+        );
+        if (res.ok) {
+          const data = (await res.json()) as { status?: string; candles?: Candle[] };
+          if (data.status === "live" && (data.candles?.length ?? 0) >= 2) {
+            syncRef.current[id] = (syncRef.current[id] ?? 80) + 1;
+            const mkt = computeMarketState(id, syncRef.current[id], data.candles);
+            if (!cancelled) {
+              setStates(prev => ({ ...prev, [id]: { ...mkt, lastSync: new Date(), syncCount: syncRef.current[id], source: "quotex" } }));
+            }
+            nextFetchRef.current[id] = Date.now() + Math.max(periodRef.current * 1000, 30000);
+            return;
+          }
+        }
+      } catch {
+        // bridge / api-server unreachable — fall through to retry + simulation
+      }
+      nextFetchRef.current[id] = Date.now() + 30000;
+    };
+
+    const tick = () => {
+      const now = Date.now();
+      const next: Record<string, LiveMarketState> = {};
+      const due: string[] = [];
+      for (const id of pairIds) {
+        if ((nextFetchRef.current[id] ?? 0) <= now) {
+          due.push(id); // live fetch will populate it
+          continue;
+        }
+        const existing = statesRef.current[id];
+        if (existing) {
+          next[id] = existing; // keep last known (live) state
+        } else {
+          syncRef.current[id] = (syncRef.current[id] ?? 80) + 1;
+          const mkt = computeMarketState(id, syncRef.current[id]);
+          next[id] = { ...mkt, lastSync: new Date(), syncCount: syncRef.current[id], source: "sim" };
+        }
+      }
+      if (Object.keys(next).length > 0 && !cancelled) {
+        setStates(prev => ({ ...prev, ...next }));
+      }
+      // Fire due live fetches with limited concurrency AND a per-tick cap, so a
+      // huge pair set never floods the bridge in one burst (Quotex rate-limits
+      // rapid requests — Cloudflare 429). Remaining due pairs are picked up on
+      // the next tick.
+      if (due.length > 0) {
+        const take = due.slice(0, 5);
+        const run = async () => {
+          const CONC = 3;
+          for (let i = 0; i < take.length; i += CONC) {
+            await Promise.all(take.slice(i, i + CONC).map(fetchLive));
+          }
+        };
+        void run();
+      }
+    };
+
+    tick();
+    const t = setInterval(tick, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, intervalMs, periodSeconds]);
+
+  return states;
 }

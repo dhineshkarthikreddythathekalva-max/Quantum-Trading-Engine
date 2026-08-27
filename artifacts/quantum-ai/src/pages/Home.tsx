@@ -7,6 +7,7 @@ import { TIMEFRAMES, type Timeframe } from "@/data/timeframes";
 import { runSignalPipeline, type PipelineSignalResult } from "@/lib/signalPipeline";
 import type { APlusComponentScores, RegimeType } from "@/lib/aPlusEngine";
 import { notifyASignal, showToastNotification, requestNotificationPermission } from "@/lib/notifications";
+import { API_BASE } from "@/lib/apiConfig";
 import {
   Zap, ChevronDown, BarChart2,
   ChevronRight, Search, X, Wifi, WifiOff, RefreshCw,
@@ -664,10 +665,37 @@ function AssetCategoryList({ allPairs, selectedPair, onSelect }: {
 // Stages advance on a timer that finishes with (not before) the real work.
 // ─────────────────────────────────────────────────────────────
 const ANALYSIS_STAGES = [
-  { label: "Connecting to live WebSocket feed", icon: Wifi },
-  { label: "Analyzing HTF trend alignment", icon: LineChart },
-  { label: "Running indicators · candle direction", icon: Activity },
-  { label: "Scoring confluence & building signal", icon: Target },
+  {
+    label: "Connecting to live WebSocket feed",
+    icon: Wifi,
+    detail: (elapsed: number) => `${Math.min(99, Math.round((elapsed / 900) * 100))}% handshake`,
+  },
+  {
+    label: "Fetching recent candle history",
+    icon: BarChart2,
+    detail: (elapsed: number) => `${Math.min(60, 12 + Math.floor(elapsed / 100))} candles loaded`,
+  },
+  {
+    label: "Analyzing HTF trend alignment",
+    icon: LineChart,
+    detail: (elapsed: number) => (elapsed < 850 ? "1m / 5m / 15m / 1h" : "3/4 aligned"),
+  },
+  {
+    label: "Running indicators · candle direction",
+    icon: Activity,
+    detail: () => "RSI · MACD · EMA · BB · Stoch",
+  },
+  {
+    label: "Scoring confluence & building signal",
+    icon: Target,
+    detail: (elapsed: number) =>
+      elapsed < 1700 ? "…" : `${3 + Math.min(4, Math.floor((elapsed - 1700) / 200))}/7 confirmations`,
+  },
+  {
+    label: "Validating risk · sealing signal",
+    icon: Shield,
+    detail: (elapsed: number) => (elapsed < 2550 ? "MTG · slippage · payout" : "READY ✓"),
+  },
 ];
 // Each stage gets its moment on screen even though the real pipeline can
 // finish in well under a second — the pacing is part of the experience.
@@ -700,6 +728,10 @@ function AnalysisLoader({ isAnalyzing }: { isAnalyzing: boolean }) {
           </div>
         ))}
         <Sparkles className="absolute right-3 top-3 w-3.5 h-3.5 text-violet-400 animate-pulse" />
+        {/* Sweep overlay during scoring/validating stages */}
+        {activeIdx >= 4 && (
+          <div className="absolute inset-y-0 left-0 w-[40%] bg-gradient-to-r from-transparent via-green-400/30 to-transparent loader-sweep pointer-events-none" />
+        )}
       </div>
 
       {/* Stage checklist */}
@@ -708,16 +740,24 @@ function AnalysisLoader({ isAnalyzing }: { isAnalyzing: boolean }) {
           const Icon = s.icon;
           const done = i < activeIdx;
           const active = i === activeIdx;
+          const detail = s.detail(elapsed);
           return (
-            <div key={s.label} className={`flex items-center gap-2.5 text-[11px] font-mono transition-all duration-300 ${done ? "text-green-400" : active ? "text-white" : "text-slate-600"}`}>
-              {done
-                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
-                : active
-                ? <RefreshCw className="w-3.5 h-3.5 text-green-400 shrink-0 animate-spin" />
-                : <Icon className="w-3.5 h-3.5 text-slate-700 shrink-0" />}
-              <span>{s.label}</span>
-              {active && (
-                <span className="ml-auto text-[9px] text-green-500 tracking-widest animate-pulse">●●●</span>
+            <div key={s.label} className={`flex flex-col gap-0.5 text-[11px] font-mono transition-all duration-300 ${done ? "text-green-400" : active ? "text-white" : "text-slate-600"}`}>
+              <div className="flex items-center gap-2.5">
+                {done
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                  : active
+                  ? <RefreshCw className="w-3.5 h-3.5 text-green-400 shrink-0 animate-spin" />
+                  : <Icon className="w-3.5 h-3.5 text-slate-700 shrink-0" />}
+                <span className="flex-1">{s.label}</span>
+                {active && (
+                  <span className="text-[9px] text-green-500 tracking-widest animate-pulse">●●●</span>
+                )}
+              </div>
+              {(active || done) && (
+                <span className={`ml-6 text-[9px] tracking-wide ${done ? "text-green-500/70" : "text-slate-500"}`}>
+                  {detail}
+                </span>
               )}
             </div>
           );
@@ -795,42 +835,7 @@ function SignalsTab({
           </div>
         </div>
 
-        {/* Generate Signal button */}
-        <button
-          onClick={onGetSignal}
-          disabled={!selectedPair || !liveMarket || isAnalyzing}
-          className={`w-full rounded-2xl py-5 font-black text-xl tracking-widest uppercase transition-all border ${
-            !selectedPair || !liveMarket
-              ? "border-white/10 bg-white/5 text-slate-600 cursor-not-allowed"
-              : isAnalyzing
-              ? "border-green-500/40 bg-green-500/10 text-green-400 cursor-wait"
-              : "border-green-500/60 bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-300 hover:border-green-400 hover:text-white hover:shadow-[0_0_40px_hsl(142_70%_45%/0.4)]"
-          }`}
-        >
-          {isAnalyzing
-            ? <span className="flex items-center justify-center gap-2 text-base">
-                <span className="w-5 h-5 rounded-full border-2 border-green-400 border-t-transparent animate-spin" />
-                Analyzing…
-              </span>
-            : !liveMarket
-            ? <span className="flex items-center justify-center gap-2 text-base"><RefreshCw className="w-5 h-5 animate-spin" />Syncing…</span>
-            : <span className="flex items-center justify-center gap-2"><Zap className="w-6 h-6" />Generate Signal</span>
-          }
-        </button>
-
-        {/* ADX status — always allows signal generation */}
-        {liveMarket && (
-          <div className={`flex items-center justify-between px-3 py-2 rounded-lg border text-[10px] font-mono ${
-            adxGatePass ? "border-green-500/25 bg-green-500/8 text-green-400" : "border-amber-500/25 bg-amber-500/8 text-amber-400"
-          }`}>
-            <span className="font-bold uppercase tracking-wider">ADX Trend Strength</span>
-            <span className="font-black">
-              {adxGatePass ? `✓ STRONG — ADX ${liveMarket.indicators.adx.toFixed(0)}` : `◈ MODERATE — ADX ${liveMarket.indicators.adx.toFixed(0)}`}
-            </span>
-          </div>
-        )}
-
-        {/* Assets selection */}
+        {/* Assets selection — moved to top: pick asset first, then analyze */}
         <div>
           <div className="flex items-center gap-2 mb-2">
             <BarChart2 className="w-3.5 h-3.5 text-slate-500" />
@@ -863,6 +868,41 @@ function SignalsTab({
 
         {/* Available Assets List — categorized with search */}
         <AssetCategoryList allPairs={allPairs} selectedPair={selectedPair} onSelect={onSelectPair} />
+
+        {/* ADX status — between list and action button */}
+        {liveMarket && (
+          <div className={`flex items-center justify-between px-3 py-2 rounded-lg border text-[10px] font-mono ${
+            adxGatePass ? "border-green-500/25 bg-green-500/8 text-green-400" : "border-amber-500/25 bg-amber-500/8 text-amber-400"
+          }`}>
+            <span className="font-bold uppercase tracking-wider">ADX Trend Strength</span>
+            <span className="font-black">
+              {adxGatePass ? `✓ STRONG — ADX ${liveMarket.indicators.adx.toFixed(0)}` : `◈ MODERATE — ADX ${liveMarket.indicators.adx.toFixed(0)}`}
+            </span>
+          </div>
+        )}
+
+        {/* Generate Signal button — moved to bottom: final action after selection */}
+        <button
+          onClick={onGetSignal}
+          disabled={!selectedPair || !liveMarket || isAnalyzing}
+          className={`w-full rounded-2xl py-5 font-black text-xl tracking-widest uppercase transition-all border pb-2 ${
+            !selectedPair || !liveMarket
+              ? "border-white/10 bg-white/5 text-slate-600 cursor-not-allowed"
+              : isAnalyzing
+              ? "border-green-500/40 bg-green-500/10 text-green-400 cursor-wait"
+              : "border-green-500/60 bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-300 hover:border-green-400 hover:text-white hover:shadow-[0_0_40px_hsl(142_70%_45%/0.4)]"
+          }`}
+        >
+          {isAnalyzing
+            ? <span className="flex items-center justify-center gap-2 text-base">
+                <span className="w-5 h-5 rounded-full border-2 border-green-400 border-t-transparent animate-spin" />
+                Analyzing…
+              </span>
+            : !liveMarket
+            ? <span className="flex items-center justify-center gap-2 text-base"><RefreshCw className="w-5 h-5 animate-spin" />Syncing…</span>
+            : <span className="flex items-center justify-center gap-2"><Zap className="w-6 h-6" />Generate Signal</span>
+          }
+        </button>
 
         {/* Analysis animation (while pipeline runs) */}
         <AnalysisLoader isAnalyzing={isAnalyzing} />
@@ -1183,7 +1223,7 @@ export default function Home() {
         try {
           const periodSec = getTfMs(entry.timeframe) / 1000;
           const res = await fetch(
-            `/api/quotex/market?asset=${encodeURIComponent(entry.pair.id)}&period=${periodSec}`,
+            `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(entry.pair.id)}&period=${periodSec}`,
           );
           if (res.ok) {
             const data = (await res.json()) as { status?: string; candles?: Array<Candle & { time: number }> };

@@ -14,3 +14,40 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns live Quotex candles when the server is configured with a valid session.
+ * @summary Get read-only Quotex market candles
+ */
+export const getQuotexMarketQueryAssetMin = 2;
+
+export const getQuotexMarketQueryPeriodMin = 30;
+export const getQuotexMarketQueryPeriodMax = 3600;
+
+export const GetQuotexMarketQueryParams = zod.object({
+  asset: zod.coerce.string().min(getQuotexMarketQueryAssetMin),
+  period: zod.coerce
+    .number()
+    .min(getQuotexMarketQueryPeriodMin)
+    .max(getQuotexMarketQueryPeriodMax),
+});
+
+export const GetQuotexMarketResponse = zod.object({
+  status: zod.enum(["live", "connecting", "unavailable", "error"]),
+  source: zod.enum(["quotex", "none"]),
+  configured: zod.boolean(),
+  message: zod.string(),
+  asset: zod.string().nullable(),
+  period: zod.number().nullable(),
+  candles: zod.array(
+    zod.object({
+      time: zod.number(),
+      open: zod.number(),
+      high: zod.number(),
+      low: zod.number(),
+      close: zod.number(),
+      volume: zod.number(),
+    }),
+  ),
+  updatedAt: zod.number().nullable(),
+});

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Trading Engine — Advanced Confluence System v2</title>
+  <meta name="description" content="TradingView indicator (Advanced Confluence System v2), AI signal webhook and live signal dashboard — presented as-is from the source files." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ═══════════════════ HEADER ═══════════════════ -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#top" class="brand">
+        <span class="brand-mark">◈</span>
+        <span class="brand-text">
+          <strong>Quantum Trading Engine</strong>
+          <small>Advanced Confluence System [v2]</small>
+        </span>
+      </a>
+      <nav class="nav">
+        <a href="#indicator">Indicator</a>
+        <a href="#webhook">Webhook</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#video">Video</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══════════════════ HERO ═══════════════════ -->
+  <section class="hero" id="top">
+    <div class="container hero-inner">
+      <div class="hero-badge"><span class="dot"></span> Confluence Scoring Engine · 6 Factors</div>
+      <h1>Advanced Confluence<br /><span class="accent">System [v2]</span></h1>
+      <p class="hero-sub">
+        A TradingView indicator that combines trend, momentum, volatility, volume and
+        price-action into a single scored signal — paired with an AI webhook that streams
+        BUY / SELL signals to a live dashboard and Telegram.
+      </p>
+      <div class="hero-actions">
+        <a href="#indicator" class="btn btn-primary">View Indicator</a>
+        <a href="#webhook" class="btn btn-ghost">View Webhook</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><strong>6</strong><span>Confluence Factors</span></div>
+        <div class="stat"><strong>A/B/C</strong><span>Signal Grades</span></div>
+        <div class="stat"><strong>3</strong><span>Endpoints</span></div>
+        <div class="stat"><strong>10</strong><span>Screenshots</span></div>
+        <div class="stat"><strong>1</strong><span>Demo Video</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ INDICATOR ═══════════════════ -->
+  <section class="section" id="indicator">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-tag">01 · TradingView Pine Script</span>
+        <h2>Indicator — <span class="accent">Advanced Confluence System [v2]</span></h2>
+        <p class="section-desc">
+          Multi-indicator confluence with a 0–6 scoring engine, A/B/C signal grading,
+          ATR-based dynamic support &amp; resistance, risk/reward levels, an on-chart
+          dashboard table and alerts. The complete source is shown below verbatim —
+          exactly as provided, without any changes.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Inputs &amp; Defaults</h3>
+        </div>
+        <div class="settings-grid">
+          <div class="setting"><span class="k">Trend EMA Length</span><span class="v">200</span></div>
+          <div class="setting"><span class="k">ADX Length</span><span class="v">14</span></div>
+          <div class="setting"><span class="k">ADX Min Strength (avoid chop)</span><span class="v">20</span></div>
+          <div class="setting"><span class="k">RSI Length</span><span class="v">14</span></div>
+          <div class="setting"><span class="k">RSI Oversold</span><span class="v">45</span></div>
+          <div class="setting"><span class="k">Stoch Length</span><span class="v">14</span></div>
+          <div class="setting"><span class="k">ATR Length</span><span class="v">14</span></div>
+          <div class="setting"><span class="k">ATR Zone Multiplier</span><span class="v">1.5</span></div>
+          <div class="setting"><span class="k">Pivot Lookback</span><span class="v">10</span></div>
+          <div class="setting"><span class="k">Min Score to Signal (max 6)</span><span class="v">3</span></div>
+          <div class="setting"><span class="k">Risk:Reward Ratio</span><span class="v">2.0</span></div>
+          <div class="setting"><span class="k">Show R/R Levels · Dashboard</span><span class="v">On</span></div>
+        </div>
+      </div>
+
+      <div class="card code-card">
+        <div class="card-head code-head">
+          <div class="code-title">
+            <span class="file-icon">P</span>
+            <div>
+              <h3>advanced-confluence-system-v2.pine</h3>
+              <small>Pine Script v5 · overlay=true</small>
+            </div>
+          </div>
+          <div class="code-actions">
+            <button class="btn btn-small" data-copy="indicator">Copy</button>
+            <a class="btn btn-small btn-ghost" href="attached_assets/Pasted--version-5-indicator-Advanced-Confluence-System-v2-over_1778329748483.txt" download>Download</a>
+          </div>
+        </div>
+        <pre class="code" data-src="attached_assets/Pasted--version-5-indicator-Advanced-Confluence-System-v2-over_1778329748483.txt" id="code-indicator"><span class="code-loading">Loading source…</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ WEBHOOK ═══════════════════ -->
+  <section class="section" id="webhook">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-tag">02 · Flask Signal Server</span>
+        <h2>Webhook &amp; <span class="accent">Live Signal Dashboard</span></h2>
+        <p class="section-desc">
+          A Flask server that receives trading signals via <code>/webhook</code>, scores them
+          with an AI confidence calculation, forwards high-conviction signals to Telegram,
+          and renders the last 100 signals on the dashboard. Source shown verbatim.
+        </p>
+      </div>
+
+      <div class="endpoints">
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <div><strong>/</strong><small>Dashboard — renders last 100 signals</small></div>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><strong>/webhook</strong><small>Receive signal → AI score → Telegram alert</small></div>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <div><strong>/clear</strong><small>Clear stored signals</small></div>
+        </div>
+      </div>
+
+      <div class="card code-card">
+        <div class="card-head code-head">
+          <div class="code-title">
+            <span class="file-icon py">F</span>
+            <div>
+              <h3>app.py — Flask webhook + dashboard</h3>
+              <small>Python · Flask · Telegram integration</small>
+            </div>
+          </div>
+          <div class="code-actions">
+            <button class="btn btn-small" data-copy="webhook">Copy</button>
+            <a class="btn btn-small btn-ghost" href="attached_assets/Pasted-from-flask-import-Flask-request-render-template-jsonify_1779176738395.txt" download>Download</a>
+          </div>
+        </div>
+        <pre class="code" data-src="attached_assets/Pasted-from-flask-import-Flask-request-render-template-jsonify_1779176738395.txt" id="code-webhook"><span class="code-loading">Loading source…</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SCREENSHOTS ═══════════════════ -->
+  <section class="section" id="screenshots">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-tag">03 · Reference Images</span>
+        <h2>Screenshots — <span class="accent">as provided</span></h2>
+        <p class="section-desc">
+          The ten reference images exactly as they were supplied, grouped by the asset
+          category each shows. Click any image to open it full size.
+        </p>
+      </div>
+
+      <div class="gallery-group">
+        <h3 class="group-title"><span class="chip chip-cur">C</span> Currencies</h3>
+        <div class="gallery">
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_(2)_1778329969689.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_(2)_1778329969689.jpeg" alt="Quotex — Currencies trade pair selection (1)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.54_AM_(2)_1778329969689.jpeg</figcaption></figure>
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_(3)_1778329969690.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_(3)_1778329969690.jpeg" alt="Quotex — Currencies trade pair selection (2)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.54_AM_(3)_1778329969690.jpeg</figcaption></figure>
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.55_AM_(1)_1778329969691.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.55_AM_(1)_1778329969691.jpeg" alt="Quotex — Currencies trade pair selection (3)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.55_AM_(1)_1778329969691.jpeg</figcaption></figure>
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.55_AM_1778329969692.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.55_AM_1778329969692.jpeg" alt="Quotex — Currencies trade pair selection (4)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.55_AM_1778329969692.jpeg</figcaption></figure>
+        </div>
+      </div>
+
+      <div class="gallery-group">
+        <h3 class="group-title"><span class="chip chip-cry">₿</span> Crypto</h3>
+        <div class="gallery">
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.53_AM_(1)_1778329969687.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.53_AM_(1)_1778329969687.jpeg" alt="Quotex — Crypto trade pair selection (1)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.53_AM_(1)_1778329969687.jpeg</figcaption></figure>
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_1778329969690.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_1778329969690.jpeg" alt="Quotex — Crypto trade pair selection (2)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.54_AM_1778329969690.jpeg</figcaption></figure>
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-09_at_2.57.11_PM_(1)_1778329969693.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-09_at_2.57.11_PM_(1)_1778329969693.jpeg" alt="Quotex — Crypto trade pair selection (3)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-09_at_2.57.11_PM_(1)_1778329969693.jpeg</figcaption></figure>
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-09_at_2.57.11_PM_1778329969694.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-09_at_2.57.11_PM_1778329969694.jpeg" alt="Quotex — Crypto trade pair selection (4)" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-09_at_2.57.11_PM_1778329969694.jpeg</figcaption></figure>
+        </div>
+      </div>
+
+      <div class="gallery-group">
+        <h3 class="group-title"><span class="chip chip-com">⛽</span> Commodities</h3>
+        <div class="gallery">
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_(1)_1778329969689.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.54_AM_(1)_1778329969689.jpeg" alt="Quotex — Commodities trade pair selection" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.54_AM_(1)_1778329969689.jpeg</figcaption></figure>
+        </div>
+      </div>
+
+      <div class="gallery-group">
+        <h3 class="group-title"><span class="chip chip-stk">📈</span> Stocks</h3>
+        <div class="gallery">
+          <figure><a href="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.53_AM_1778329969688.jpeg" target="_blank"><img src="attached_assets/WhatsApp_Image_2026-05-07_at_8.30.53_AM_1778329969688.jpeg" alt="Quotex — Stocks trade pair selection" loading="eager" /></a><figcaption>WhatsApp_Image_2026-05-07_at_8.30.53_AM_1778329969688.jpeg</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ VIDEO ═══════════════════ -->
+  <section class="section" id="video">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-tag">04 · Demo</span>
+        <h2>Video — <span class="accent">as provided</span></h2>
+        <p class="section-desc">
+          The recorded demo exactly as it was supplied.
+        </p>
+      </div>
+      <div class="video-wrap">
+        <video
+          controls
+          preload="metadata"
+          src="attached_assets/video_2026-07-24_08-57-13_1784863685644.mp4"
+          aria-label="Demo video">
+          Your browser does not support HTML5 video.
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ FOOTER ═══════════════════ -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p><strong>Quantum Trading Engine</strong> — Advanced Confluence System [v2]</p>
+      <p class="fine">All indicator code, webhook code, screenshots and video are presented exactly as provided — without any changes.</p>
+      <p class="fine">Educational use only · Not financial advice.</p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
