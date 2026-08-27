@@ -471,7 +471,7 @@ function checkEntryTiming(
     reasons.push("Weak body — low conviction candle");
   }
 
-  const optimal = score >= 60;
+  const optimal = score >= 40; // Lower threshold so signals fire more often
 
   return {
     optimal,
@@ -579,10 +579,11 @@ function engineTitanX(
   }
 
   // Structure score: 0-100
-  let structureScore = 50;
-  if (Math.abs(trendScore) >= 1.5) structureScore = 85;
-  else if (Math.abs(trendScore) >= 1) structureScore = 70;
-  else if (Math.abs(trendScore) >= 0.5) structureScore = 60;
+  let structureScore = 55;
+  if (Math.abs(trendScore) >= 1.5) structureScore = 90;
+  else if (Math.abs(trendScore) >= 1) structureScore = 75;
+  else if (Math.abs(trendScore) >= 0.5) structureScore = 65;
+  else if (Math.abs(trendScore) > 0) structureScore = 55;
 
   // Zone alignment bonus
   if (nearestZone && distAtr < 0.5) {
@@ -592,8 +593,8 @@ function engineTitanX(
 
   structureScore = Math.min(100, structureScore);
 
-  const direction = trendScore > 0.3 ? "up" : trendScore < -0.3 ? "down" : "neutral";
-  const passed = structureScore >= 60 && direction !== "neutral";
+  const direction = trendScore > 0.15 ? "up" : trendScore < -0.15 ? "down" : "neutral";
+  const passed = structureScore >= 45 && direction !== "neutral";
 
   return {
     name: "TITAN X",
@@ -657,7 +658,7 @@ function engineNexusFusion(
   const confidence = Math.round(50 + agreement * 50);
 
   const direction = bullVotes > bearVotes ? "up" : bearVotes > bullVotes ? "down" : "neutral";
-  const passed = confidence >= 60 && direction !== "neutral" && (bullVotes >= 4 || bearVotes >= 4);
+  const passed = confidence >= 45 && direction !== "neutral" && (bullVotes >= 2 || bearVotes >= 2);
 
   reasons.push(`Votes: bull=${bullVotes} bear=${bearVotes} → ${direction}`);
 
@@ -750,8 +751,8 @@ function engineApexVision(
 
   score = Math.max(0, Math.min(100, score));
 
-  const direction = score >= 55 ? "up" : score <= 45 ? "down" : "neutral";
-  const passed = score >= 60 || score <= 40;
+  const direction = score >= 52 ? "up" : score <= 48 ? "down" : "neutral";
+  const passed = score >= 50 || score <= 50; // Always pass — this engine provides context, not veto
 
   return {
     name: "APEX VISION",
@@ -890,9 +891,9 @@ function engineQuantumStrike(
   }
 
   const totalScore = bullScore + bearScore;
-  const confidence = Math.min(100, Math.round(50 + (totalScore / 80) * 50));
+  const confidence = Math.min(100, Math.round(50 + (totalScore / 60) * 50));
   const direction = bullScore > bearScore ? "up" : bearScore > bullScore ? "down" : "neutral";
-  const passed = confidence >= 60 && direction !== "neutral" && totalScore >= 30;
+  const passed = direction !== "neutral" && totalScore >= 10;
 
   return {
     name: "QUANTUM STRIKE",
@@ -927,9 +928,9 @@ function engineOmegaQX(
   const agreeingCount = majorityDir === "up" ? upCount : downCount;
 
   // ── Gate 1: Minimum engine agreement ──
-  const minEngines = otcAnalysis.recommendedStrictness === "very_strict" ? 5
-    : otcAnalysis.recommendedStrictness === "strict" ? 4
-    : 3;
+  const minEngines = otcAnalysis.recommendedStrictness === "very_strict" ? 3
+    : otcAnalysis.recommendedStrictness === "strict" ? 2
+    : 2;
 
   if (agreeingCount < minEngines) {
     reasons.push(`Only ${agreeingCount}/${minEngines} engines agree — need more consensus`);
@@ -945,34 +946,16 @@ function engineOmegaQX(
 
   reasons.push(`${agreeingCount} engines agree on ${majorityDir}`);
 
-  // ── Gate 2: Entry timing quality ──
-  if (!entryTiming.optimal) {
-    reasons.push(`Entry timing suboptimal (score ${entryTiming.score})`);
-    reasons.push(...entryTiming.reasons.slice(0, 2));
-    return {
-      name: "OMEGA QX",
-      direction: majorityDir,
-      confidence: 40 + agreeingCount * 5,
-      weight: 0.985,
-      passed: false,
-      reasons,
-    };
+  // ── Entry timing is informational only (not a gate) ──
+  if (entryTiming.optimal) {
+    reasons.push(`Entry timing optimal (score ${entryTiming.score})`);
+  } else {
+    reasons.push(`Entry timing acceptable (score ${entryTiming.score}) — signal still fires`);
   }
 
-  reasons.push(`Entry timing optimal (score ${entryTiming.score})`);
-
-  // ── Gate 3: OTC manipulation veto ──
+  // ── OTC manipulation is a penalty, not a veto ──
   if (otcAnalysis.isOTC && otcAnalysis.manipulationScore > 0.7) {
-    reasons.push(`OTC manipulation score too high (${(otcAnalysis.manipulationScore * 100).toFixed(0)}%)`);
-    reasons.push(...otcAnalysis.manipulationFlags.slice(0, 2));
-    return {
-      name: "OMEGA QX",
-      direction: majorityDir,
-      confidence: 35,
-      weight: 0.985,
-      passed: false,
-      reasons,
-    };
+    reasons.push(`⚠ OTC manipulation detected (${(otcAnalysis.manipulationScore * 100).toFixed(0)}%) — confidence reduced`);
   }
 
   // ── Calculate final confidence ──
@@ -988,15 +971,16 @@ function engineOmegaQX(
 
   // Bonuses
   let confidence = baseConfidence;
-  if (agreeingCount >= 5) confidence += 10; // Strong consensus bonus
-  if (entryTiming.score >= 75) confidence += 8; // Excellent entry bonus
+  if (agreeingCount >= 4) confidence += 12; // Strong consensus bonus
+  if (agreeingCount >= 3) confidence += 5; // Moderate consensus bonus
+  if (entryTiming.score >= 60) confidence += 8; // Good entry bonus
   if (otcAnalysis.isOTC && otcAnalysis.manipulationScore < 0.2) confidence += 5; // Clean OTC bonus
 
   // Penalties
-  if (otcAnalysis.isOTC) confidence -= 5; // OTC general penalty
-  if (agreeingCount < 4) confidence -= 5; // Weak consensus penalty
+  if (otcAnalysis.isOTC && otcAnalysis.manipulationScore > 0.5) confidence -= 8; // OTC manipulation penalty
+  if (agreeingCount < 3) confidence -= 3; // Weak consensus penalty
 
-  confidence = Math.max(30, Math.min(98, Math.round(confidence)));
+  confidence = Math.max(40, Math.min(98, Math.round(confidence)));
 
   return {
     name: "OMEGA QX",
