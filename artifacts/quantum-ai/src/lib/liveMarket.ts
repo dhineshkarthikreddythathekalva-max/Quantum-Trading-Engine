@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { API_BASE } from "./apiConfig";
+import { API_BASE, BRIDGE_BASE } from "./apiConfig";
 
 export interface Candle {
   open: number; high: number; low: number; close: number; volume: number;
@@ -626,22 +626,26 @@ export function useLiveMarket(
     let cancelled = false;
 
     const tick = async () => {
-      // 1) Try the live Quotex API (Python bridge proxied through /api).
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}`,
-        );
-        if (res.ok) {
-          const data = (await res.json()) as { status?: string; candles?: Candle[] };
-          if (!cancelled && data.status === "live" && (data.candles?.length ?? 0) >= 2) {
-            syncCountRef.current += 1;
-            const mkt = computeMarketState(pairId, syncCountRef.current, data.candles);
-            setState({ ...mkt, lastSync: new Date(), syncCount: syncCountRef.current, source: "quotex" });
-            return;
+      // 1) Try the direct bridge URL first (VITE_BRIDGE_URL), then api-server proxy.
+      const bridgeUrls = [
+        BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}` : null,
+        `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}`,
+      ].filter(Boolean) as string[];
+      for (const url of bridgeUrls) {
+        try {
+          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          if (res.ok) {
+            const data = (await res.json()) as { status?: string; candles?: Candle[] };
+            if (!cancelled && data.status === "live" && (data.candles?.length ?? 0) >= 2) {
+              syncCountRef.current += 1;
+              const mkt = computeMarketState(pairId, syncCountRef.current, data.candles);
+              setState({ ...mkt, lastSync: new Date(), syncCount: syncCountRef.current, source: "quotex" });
+              return;
+            }
           }
+        } catch {
+          // unreachable — try next URL
         }
-      } catch {
-        // API or bridge unreachable — fall through to simulation.
       }
       if (cancelled) return;
 
@@ -693,24 +697,28 @@ export function usePairScanner(
     nextFetchRef.current = {}; // force fresh fetch when period/pair set changes
 
     const fetchLive = async (id: string) => {
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}`,
-        );
-        if (res.ok) {
-          const data = (await res.json()) as { status?: string; candles?: Candle[] };
-          if (data.status === "live" && (data.candles?.length ?? 0) >= 2) {
-            syncRef.current[id] = (syncRef.current[id] ?? 80) + 1;
-            const mkt = computeMarketState(id, syncRef.current[id], data.candles);
-            if (!cancelled) {
-              setStates(prev => ({ ...prev, [id]: { ...mkt, lastSync: new Date(), syncCount: syncRef.current[id], source: "quotex" } }));
+      const urls = [
+        BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}` : null,
+        `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}`,
+      ].filter(Boolean) as string[];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          if (res.ok) {
+            const data = (await res.json()) as { status?: string; candles?: Candle[] };
+            if (data.status === "live" && (data.candles?.length ?? 0) >= 2) {
+              syncRef.current[id] = (syncRef.current[id] ?? 80) + 1;
+              const mkt = computeMarketState(id, syncRef.current[id], data.candles);
+              if (!cancelled) {
+                setStates(prev => ({ ...prev, [id]: { ...mkt, lastSync: new Date(), syncCount: syncRef.current[id], source: "quotex" } }));
+              }
+              nextFetchRef.current[id] = Date.now() + Math.max(periodRef.current * 1000, 30000);
+              return;
             }
-            nextFetchRef.current[id] = Date.now() + Math.max(periodRef.current * 1000, 30000);
-            return;
           }
+        } catch {
+          // unreachable — try next URL
         }
-      } catch {
-        // bridge / api-server unreachable — fall through to retry + simulation
       }
       nextFetchRef.current[id] = Date.now() + 30000;
     };

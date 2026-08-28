@@ -11,6 +11,11 @@
 export const API_BASE: string =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) || "";
 
+/** Direct Quotex bridge URL — when set, the frontend talks to the bridge
+ *  directly instead of going through the api-server. */
+export const BRIDGE_BASE: string =
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_BRIDGE_URL) || "";
+
 /** Kimi (Moonshot AI) — called directly from the browser. */
 export const KIMI_BASE = "https://api.moonshot.cn";
 
