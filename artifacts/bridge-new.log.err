@@ -1,0 +1,180 @@
+D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 201, in connect
+    await self._send_handshake(ssid)
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 450, in _send_handshake
+    ok = await self._recv_until_sioconnect(timeout=CONNECTION_SETTINGS.get("handshake_timeout", 10.0))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 409, in _recv_until_sioconnect
+    msg = await asyncio.wait_for(self.websocket.recv(), timeout=timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\connection.py", line 302, in recv
+    raise ConcurrencyError(
+    ...<2 lines>...
+    ) from None
+websockets.exceptions.ConcurrencyError: cannot call recv while another coroutine is already running recv or recv_streaming
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 201, in connect
+    await self._send_handshake(ssid)
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 457, in _send_handshake
+    auth_response = await asyncio.wait_for(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\connection.py", line 316, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedOK: sent 1000 (OK); then received 1000 (OK)
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 201, in connect
+    await self._send_handshake(ssid)
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 457, in _send_handshake
+    auth_response = await asyncio.wait_for(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\connection.py", line 316, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedOK: sent 1000 (OK); then received 1000 (OK)
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 186, in connect
+    self.websocket = await asyncio.wait_for(
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\client.py", line 570, in __await_impl__
+    await connection.handshake(
+    ...<2 lines>...
+    )
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\client.py", line 114, in handshake
+    raise self.protocol.handshake_exc
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\client.py", line 334, in parse
+    self.process_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\client.py", line 145, in process_response
+    raise InvalidStatus(response)
+websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 429
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 186, in connect
+    self.websocket = await asyncio.wait_for(
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\client.py", line 570, in __await_impl__
+    await connection.handshake(
+    ...<2 lines>...
+    )
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\client.py", line 114, in handshake
+    raise self.protocol.handshake_exc
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\client.py", line 334, in parse
+    self.process_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\client.py", line 145, in process_response
+    raise InvalidStatus(response)
+websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 429
+Traceback (most recent call last):
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\connection.py", line 297, in recv
+    return await self.recv_messages.get(decode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\messages.py", line 158, in get
+    frame = await self.frames.get(not self.closed)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\websockets\asyncio\messages.py", line 51, in get
+    await self.get_waiter
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 457, in _send_handshake
+    auth_response = await asyncio.wait_for(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 506, in wait_for
+    async with timeouts.timeout(timeout):
+               ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\asyncio\timeouts.py", line 117, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 201, in connect
+    await self._send_handshake(ssid)
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\.venv\Lib\site-packages\api_quotex\websocket_client.py", line 517, in _send_handshake
+    raise WebSocketError("Handshake timeout")
+api_quotex.exceptions.WebSocketError: Handshake timeout
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 63699)
+Traceback (most recent call last):
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\bridge.py", line 409, in do_GET
+    self._send(200 if result["status"] == "live" else 503, result)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\bridge.py", line 382, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 451, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 439, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\bridge.py", line 413, in do_GET
+    self._send(500, {"error": str(exc)})
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Quantum-Trading-Engine\artifacts\quotex-bridge\bridge.py", line 381, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 553, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 557, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dhine\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------

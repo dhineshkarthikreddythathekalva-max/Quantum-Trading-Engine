@@ -47,8 +47,8 @@ def _load_dotenv():
 
 _load_dotenv()
 
-HOST = os.environ.get("QUOTEX_BRIDGE_HOST", "127.0.0.1")
-PORT = int(os.environ.get("QUOTEX_BRIDGE_PORT", "5001"))
+HOST = os.environ.get("QUOTEX_BRIDGE_HOST", "0.0.0.0")
+PORT = int(os.environ.get("QUOTEX_BRIDGE_PORT") or os.environ.get("PORT") or "5001")
 
 SSID = os.environ.get("QUOTEX_SSID", "").strip()
 COOKIES = os.environ.get("QUOTEX_COOKIES", "").strip()
