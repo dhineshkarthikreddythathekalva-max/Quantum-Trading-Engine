@@ -1234,54 +1234,85 @@ export function generateSignal(
   //  BUILD OUTPUT
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Final direction from QUOTEX MASTER
-  const finalDirection = quotexMaster.passed ? quotexMaster.direction : "neutral";
-  const signalDirection: SignalDirection = finalDirection === "up" ? "BUY" : finalDirection === "down" ? "SELL" : "SKIP";
+  // ── NO-SKIP RULE: If ANY engine fired with a direction, produce BUY/SELL ──
+  // Collect all passed engines with a direction (from ALL 6 engines)
+  const allPassedEnginesWithDir = [titanX, nexusFusion, apexVision, quantumStrike, omegaQX, quotexMaster]
+    .filter(e => e.passed && e.direction !== "neutral");
 
-  // Skip reason
-  let skipReason = "";
-  if (signalDirection === "SKIP") {
-    if (!omegaQX.passed) {
-      skipReason = omegaQX.reasons[0] ?? "OMEGA QX gate did not pass";
-    } else {
-      skipReason = "QUOTEX MASTER fusion did not pass threshold";
+  // Also check preliminary engines (1-4) which always run
+  const preliminaryWithDir = [titanX, nexusFusion, apexVision, quantumStrike]
+    .filter(e => e.direction !== "neutral");
+
+  // Determine fallback direction from any engine that has a direction
+  const fallbackDirection = (() => {
+    // Prefer engines that passed
+    if (allPassedEnginesWithDir.length > 0) {
+      // Weighted vote from passed engines
+      let upW = 0, downW = 0;
+      for (const e of allPassedEnginesWithDir) {
+        const v = e.confidence * e.weight;
+        if (e.direction === "up") upW += v; else downW += v;
+      }
+      return upW >= downW ? "up" : "down";
     }
+    // Fallback to preliminary engines
+    if (preliminaryWithDir.length > 0) {
+      let upW = 0, downW = 0;
+      for (const e of preliminaryWithDir) {
+        const v = e.confidence * e.weight;
+        if (e.direction === "up") upW += v; else downW += v;
+      }
+      return upW >= downW ? "up" : "down";
+    }
+    return "neutral";
+  })();
+
+  // Final direction: prefer QUOTEX MASTER, but ALWAYS produce BUY/SELL if any engine has a direction
+  let finalDirection = quotexMaster.passed ? quotexMaster.direction : "neutral";
+  if (finalDirection === "neutral" && fallbackDirection !== "neutral") {
+    finalDirection = fallbackDirection;
   }
 
-  // Grade from QUOTEX MASTER
-  const grade: SignalGrade = quotexMaster.confidence >= 80 ? "STRONG"
-    : quotexMaster.confidence >= 60 ? "MODERATE"
-    : "WEAK";
+  const signalDirection: SignalDirection = finalDirection === "up" ? "BUY" : finalDirection === "down" ? "SELL" : "SKIP";
 
-  // Confidence from QUOTEX MASTER (no artificial floor)
-  const confidence = quotexMaster.confidence;
+  // Skip reason (only when NO engine has any direction at all)
+  const skipReason = signalDirection === "SKIP" ? "No directional consensus from any engine" : "";
+
+  // Grade from QUOTEX MASTER, with fallback
+  const rawConfidence = quotexMaster.passed ? quotexMaster.confidence : 50;
+  // Boost confidence when using fallback (engines disagree but still have direction)
+  const confidence = finalDirection !== quotexMaster.direction || !quotexMaster.passed
+    ? Math.max(45, Math.min(75, rawConfidence))
+    : rawConfidence;
+
+  const grade: SignalGrade = confidence >= 80 ? "STRONG"
+    : confidence >= 60 ? "MODERATE"
+    : "WEAK";
 
   // Factors for UI (backward compat)
   const factors: SignalFactor[] = [];
-  for (const e of allEngines) {
-    if (e.passed && e.direction !== "neutral") {
-      factors.push({
-        label: `${e.name}: ${e.reasons[0] ?? e.direction}`,
-        direction: e.direction === "up" ? "BUY" : "SELL",
-        weight: e.confidence * e.weight / 50,
-        category: e.name === "TITAN X" ? "trend" : e.name === "NEXUS FUSION" ? "oscillator" : "pattern",
-      });
-    }
+  const enginesForFactors = allPassedEnginesWithDir.length > 0 ? allPassedEnginesWithDir : preliminaryWithDir;
+  for (const e of enginesForFactors) {
+    factors.push({
+      label: `${e.name}: ${e.reasons[0] ?? e.direction}`,
+      direction: e.direction === "up" ? "BUY" : "SELL",
+      weight: e.confidence * e.weight / 50,
+      category: e.name === "TITAN X" ? "trend" : e.name === "NEXUS FUSION" ? "oscillator" : "pattern",
+    });
   }
 
   const highWeightCount = factors.filter(f => f.weight >= 2.0).length;
-  const confirmations = allEngines.filter(e => e.passed).length;
+  const confirmations = enginesForFactors.filter(e => e.passed).length || preliminaryWithDir.length;
 
-  // Key reason (from QUOTEX MASTER top reason)
-  const keyReason = quotexMaster.reasons[0] ?? `${signalDirection} confluence (${regime})`;
+  // Key reason (from QUOTEX MASTER top reason, or fallback engine)
+  const keyReasonSource = quotexMaster.passed ? quotexMaster : enginesForFactors[0];
+  const keyReason = keyReasonSource?.reasons[0] ?? `${signalDirection} confluence (${regime})`;
 
   // Pattern names for UI badges
   const patternNames: string[] = [];
-  for (const e of allEngines) {
-    if (e.passed && e.direction !== "neutral") {
-      const emoji = e.confidence >= 80 ? " ⚡" : "";
-      patternNames.push(`${e.name}${emoji}`);
-    }
+  for (const e of enginesForFactors) {
+    const emoji = e.confidence >= 80 ? " ⚡" : "";
+    patternNames.push(`${e.name}${emoji}`);
   }
 
   // Support / Resistance
