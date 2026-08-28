@@ -204,11 +204,11 @@ function SyncBadge({ market, label = "5s" }: { market: LiveMarketState | null; l
   );
   const live = market.source === "quotex";
   if (!live) {
-    // API / bridge unreachable (or Quotex rate-limiting) → bot is offline.
+    // API / bridge unreachable — running in AI simulation mode.
     return (
-      <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-red-500/25 bg-red-500/10">
-        <WifiOff className="w-3 h-3 text-red-400" />
-        <span className="text-red-400 font-semibold">Bot Disconnected</span>
+      <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10">
+        <WifiOff className="w-3 h-3 text-amber-400" />
+        <span className="text-amber-400 font-semibold">AI Mode</span>
       </div>
     );
   }
