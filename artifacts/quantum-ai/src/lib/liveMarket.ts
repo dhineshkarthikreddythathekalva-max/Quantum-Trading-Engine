@@ -633,7 +633,7 @@ export function useLiveMarket(
       ].filter(Boolean) as string[];
       for (const url of bridgeUrls) {
         try {
-          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
           if (res.ok) {
             const data = (await res.json()) as { status?: string; candles?: Candle[] };
             if (!cancelled && data.status === "live" && (data.candles?.length ?? 0) >= 2) {
@@ -703,7 +703,7 @@ export function usePairScanner(
       ].filter(Boolean) as string[];
       for (const url of urls) {
         try {
-          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
           if (res.ok) {
             const data = (await res.json()) as { status?: string; candles?: Candle[] };
             if (data.status === "live" && (data.candles?.length ?? 0) >= 2) {
