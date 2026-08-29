@@ -1,10 +1,10 @@
 /**
  * API Configuration — centralizes all backend URLs.
  *
- * On Replit (dev): the Vite proxy handles /api/* → localhost:5000, so no base URL needed.
- * On Vercel (prod): set VITE_API_URL to the Replit backend URL (e.g. https://your-app.replit.app).
+ * In development: the Vite proxy handles /api/* → localhost:5000.
+ * On Vercel (prod): serverless functions handle /api/* natively.
  *
- * Kimi (Moonshot AI) is called directly — the Vite dev proxy is not available in production.
+ * Kimi (Moonshot AI) is called directly from the browser.
  */
 
 /** Base URL for the api-server (Quotex data, ML proxy, assets, payouts). */

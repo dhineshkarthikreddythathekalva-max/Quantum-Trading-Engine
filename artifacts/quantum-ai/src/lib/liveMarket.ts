@@ -626,12 +626,15 @@ export function useLiveMarket(
     let cancelled = false;
 
     const tick = async () => {
-      // 1) Try the direct bridge URL first (VITE_BRIDGE_URL), then api-server proxy.
-      const bridgeUrls = [
+      // 1) Try real Quotex market data endpoints in order:
+      //    a) Direct bridge URL (VITE_BRIDGE_URL) — local dev with Python bridge
+      //    b) Quotex bridge via Vercel serverless proxy (/api/quotex/market)
+      //    c) Quotex bridge via api-server proxy (local dev)
+      const dataUrls = [
         BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}` : null,
         `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}`,
       ].filter(Boolean) as string[];
-      for (const url of bridgeUrls) {
+      for (const url of dataUrls) {
         try {
           const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
           if (res.ok) {

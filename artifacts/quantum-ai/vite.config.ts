@@ -3,13 +3,6 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-let runtimeErrorOverlay: any;
-try {
-  runtimeErrorOverlay = (await import("@replit/vite-plugin-runtime-error-modal")).default;
-} catch {
-  runtimeErrorOverlay = () => [];
-}
-
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 5173;
 
@@ -20,20 +13,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
@@ -55,15 +34,13 @@ export default defineConfig({
     fs: {
       strict: true,
     },
-    // Proxy API calls (live Quotex data via the Python bridge) to the api-server
-    // during local development. Run it with: PORT=5000 pnpm --filter @workspace/api-server run dev
+    // Proxy API calls to api-server during local development.
+    // In production (Vercel), serverless functions handle /api/* natively.
     proxy: {
       "/api": {
         target: "http://127.0.0.1:5000",
         changeOrigin: true,
       },
-      // Kimi (Moonshot AI) market analysis — proxied so the browser avoids CORS.
-      // Key lives in src/lib/kimi.ts. International platform endpoint.
       "/kimi": {
         target: "https://api.moonshot.ai",
         changeOrigin: true,
