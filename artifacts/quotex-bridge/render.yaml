@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: quotex-bridge
+    runtime: docker
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: QUOTEX_SSID
+        sync: false
+      - key: QUOTEX_IS_DEMO
+        value: "true"
+    healthCheckPath: /health
+    autoDeploy: true
