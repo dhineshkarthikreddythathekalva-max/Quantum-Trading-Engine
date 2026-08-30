@@ -627,12 +627,14 @@ export function useLiveMarket(
 
     const tick = async () => {
       // 1) Try real Quotex market data endpoints in order:
-      //    a) Direct bridge URL (VITE_BRIDGE_URL) — local dev with Python bridge
-      //    b) Quotex bridge via Vercel serverless proxy (/api/quotex/market)
+      //    a) Quotex bridge via Vercel serverless proxy (/api/quotex/market)
+      //    b) Direct bridge URL (VITE_BRIDGE_URL) — local dev with Python bridge
       //    c) Quotex bridge via api-server proxy (local dev)
+      // NOTE: API proxy is tried FIRST because direct bridge URLs (trycloudflare)
+      // trigger Cloudflare JavaScript challenges in browsers that block fetch().
       const dataUrls = [
-        BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}` : null,
         `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}`,
+        BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(pairId)}&period=${periodSeconds}` : null,
       ].filter(Boolean) as string[];
       for (const url of dataUrls) {
         try {
@@ -701,8 +703,8 @@ export function usePairScanner(
 
     const fetchLive = async (id: string) => {
       const urls = [
-        BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}` : null,
         `${API_BASE}/api/quotex/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}`,
+        BRIDGE_BASE ? `${BRIDGE_BASE}/market?asset=${encodeURIComponent(id)}&period=${periodRef.current}` : null,
       ].filter(Boolean) as string[];
       for (const url of urls) {
         try {
