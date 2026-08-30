@@ -91,6 +91,7 @@ try:
 except Exception:  # pragma: no cover - bad env var should not kill the bridge
     pass
 
+QX_BASE = "https://qxbroker.com"
 CONNECT_TIMEOUT = 25
 CANDLE_TIMEOUT = 15
 ASSETS_TIMEOUT = 15
@@ -134,26 +135,124 @@ class QuotexBridge:
 
     # ── connection ────────────────────────────────────────────────
     async def _login_ssid(self) -> str:
-        """Get an SSID via API-Quotex's Playwright login helper."""
-        from api_quotex import get_ssid
-        success, data = await get_ssid(email=EMAIL, password=PASSWORD, is_demo=IS_DEMO)
-        if not success:
-            raise RuntimeError(f"Playwright login failed: {data}")
-        if isinstance(data, dict):
-            for key in ("demo", "live", "ssid", "token", "session"):
-                value = data.get(key)
-                if isinstance(value, str) and value.strip():
-                    return value.strip()
-        raise RuntimeError("Playwright login did not return an SSID.")
+        """Get a fresh SSID via Playwright — custom login, not the broken library helper."""
+        from playwright.async_api import async_playwright
+
+        trade_url_pattern = "**/(trade|demo-trade|cabinet)**"
+        ssid_token = None
+
+        pw = await async_playwright().start()
+        browser = await pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        context = await browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = await context.new_page()
+        await page.add_init_script(
+            'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'
+        )
+
+        try:
+            base = "https://qxbroker.com"
+            sign_in_url = f"{base}/en/sign-in"
+            print(f"[quotex-bridge] Playwright: navigating to {sign_in_url}", flush=True)
+            await page.goto(sign_in_url, timeout=60000, wait_until="domcontentloaded")
+            await page.wait_for_timeout(3000)  # let JS hydrate
+
+            # Fill email (sign-in form, not registration)
+            email_input = page.locator('#emailInput, input[type="email"]').first
+            await email_input.fill(EMAIL)
+            print("[quotex-bridge] Playwright: email filled", flush=True)
+
+            # Fill password (sign-in form uses id=password-input)
+            pwd_input = page.locator('#password-input, input[type="password"]').first
+            await pwd_input.fill(PASSWORD)
+            print("[quotex-bridge] Playwright: password filled", flush=True)
+
+            # Click sign in button
+            sign_in_btn = page.locator('text="Sign in"').first
+            await sign_in_btn.click()
+            print("[quotex-bridge] Playwright: clicked sign in, waiting for trade page...", flush=True)
+
+            # Wait for redirect to trade page (up to 45s)
+            nav_task = page.wait_for_url(trade_url_pattern, timeout=45000)
+            await nav_task
+            print(f"[quotex-bridge] Playwright: redirected to {page.url}", flush=True)
+            await page.wait_for_timeout(3000)  # let WS connect
+
+            # Extract SSID from cookies (the API-Quotex library reads it from there)
+            cookies = await context.cookies()
+            # Try common cookie names for SSID
+            for cookie in cookies:
+                name = cookie.get("name", "").lower()
+                value = cookie.get("value", "")
+                if name in ("session_id", "ssid", "token", "session") and len(value) >= 16:
+                    ssid_token = value
+                    print(f"[quotex-bridge] Playwright: got SSID from cookie '{cookie["name"]}' ({len(value)} chars)", flush=True)
+                    break
+
+            # Fallback: intercept WebSocket URL to extract SSID
+            if not ssid_token:
+                ws_url = page.url
+                # The SSID might be in the page's JS context
+                ssid_token = await page.evaluate("""
+                    () => {
+                        // Try to find SSID in localStorage
+                        const keys = ['ssid', 'token', 'session_id', 'session'];
+                        for (const key of keys) {
+                            const val = localStorage.getItem(key);
+                            if (val && val.length >= 16) return val;
+                        }
+                        // Try sessionStorage
+                        for (const key of keys) {
+                            const val = sessionStorage.getItem(key);
+                            if (val && val.length >= 16) return val;
+                        }
+                        return null;
+                    }
+                """)
+                if ssid_token:
+                    print(f"[quotex-bridge] Playwright: got SSID from localStorage ({len(ssid_token)} chars)", flush=True)
+
+            # Last resort: intercept network requests for the SSID
+            if not ssid_token:
+                print("[quotex-bridge] Playwright: intercepting network for SSID...", flush=True)
+                captured = []
+                async def _on_response(response):
+                    if "websocket" in response.url.lower() or "connect" in response.url.lower():
+                        pass
+                page.on("response", _on_response)
+                # Try refreshing the page to trigger WS reconnect
+                await page.reload(wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(5000)
+
+            if not ssid_token:
+                # Save all cookies for debug and raise
+                all_cookies = {c["name"]: c["value"][:20] + "..." for c in cookies}
+                raise RuntimeError(
+                    f"Could not extract SSID from cookies or localStorage. "
+                    f"Available cookies: {list(all_cookies.keys())}"
+                )
+
+            return ssid_token
+
+        finally:
+            try:
+                await browser.close()
+                await pw.stop()
+            except BaseException:
+                pass
 
     async def _ensure_client(self):
         if self._client is not None and self._client.is_connected:
             return self._client
+        # Use SSID (manual or cookie-refreshed) — Playwright login is blocked by Cloudflare
         ssid = SSID
-        if not ssid and EMAIL and PASSWORD:
-            ssid = await self._login_ssid()
         if not ssid:
-            raise RuntimeError("No Quotex credentials available (QUOTEX_SSID or email/password).")
+            raise RuntimeError("No QUOTEX_SSID set. Get a fresh SSID from your Quotex browser session.")
         client = AsyncQuotexClient(
             ssid=ssid,
             is_demo=IS_DEMO,
@@ -187,33 +286,178 @@ class QuotexBridge:
         ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def _refresh_once(self):
-        """Mint a fresh SSID via Quotex's digest endpoint (needs cookies)."""
-        if not COOKIES:
-            return
+        """Mint a fresh SSID — tries cookies first, then cloudscraper login."""
+        # ── Strategy 1: Cookie-based digest endpoint (fast, no browser) ──
+        if COOKIES:
+            try:
+                import requests
+                with self._lock:
+                    resp = requests.get(
+                        "https://qxbroker.com/api/v1/cabinets/digest",
+                        headers={"User-Agent": USER_AGENT, "Cookie": COOKIES},
+                        timeout=10,
+                    )
+                    if resp.status_code == 200:
+                        token = (resp.json() or {}).get("data", {}).get("token")
+                        if isinstance(token, str) and len(token) >= 16:
+                            self._persist_ssid(token)
+                            client = self._client
+                            if client is not None:
+                                client.session_id = token
+                                client.raw_ssid = token
+                            print(f"[quotex-bridge] refreshed SSID via cookies ({len(token)} chars)", flush=True)
+                            return
+                print("[quotex-bridge] cookie refresh failed, status=" + str(resp.status_code), flush=True)
+            except BaseException as exc:
+                print(f"[quotex-bridge] cookie refresh error: {exc}", flush=True)
+
+        # ── Strategy 2: Cloudscraper login (bypasses Cloudflare, no browser) ──
+        if EMAIL and PASSWORD:
+            try:
+                print("[quotex-bridge] falling back to cloudscraper login...", flush=True)
+                new_ssid = self._cloudscraper_login()
+                if new_ssid:
+                    self._persist_ssid(new_ssid)
+                    # Force reconnect with new SSID
+                    old_client = self._client
+                    self._client = None
+                    print(f"[quotex-bridge] cloudscraper login successful, reconnecting...", flush=True)
+                    return
+            except BaseException as exc:
+                print(f"[quotex-bridge] cloudscraper login failed: {exc}", flush=True)
+                self._last_error = f"refresh cloudscraper: {exc}"
+
+    def _reconnect_via_login(self):
+        """Full reconnection: login via Playwright, get fresh SSID, reconnect."""
+        import asyncio as _aio
+        loop = self._loop
+        # Login in the bridge's event loop
+        future = asyncio.run_coroutine_threadsafe(self._login_ssid(), loop)
         try:
-            import requests
-            with self._lock:
-                resp = requests.get(
-                    "https://qxbroker.com/api/v1/cabinets/digest",
-                    headers={"User-Agent": USER_AGENT, "Cookie": COOKIES},
-                    timeout=10,
-                )
-                if resp.status_code == 200:
-                    token = (resp.json() or {}).get("data", {}).get("token")
-                    if isinstance(token, str) and len(token) >= 16:
-                        self._persist_ssid(token)
-                        client = self._client
-                        if client is not None:
-                            client.session_id = token
-                            client.raw_ssid = token
-                        print(f"[quotex-bridge] refreshed SSID ({len(token)} chars)", flush=True)
-        except BaseException as exc:
-            self._last_error = f"refresh: {exc}"
+            new_ssid = future.result(timeout=30)
+        except _aio.TimeoutError:
+            future.cancel()
+            raise RuntimeError("Playwright login timed out")
+
+        if not new_ssid:
+            raise RuntimeError("Playwright login returned empty SSID")
+
+        # Persist the new SSID
+        self._persist_ssid(new_ssid)
+
+        # Disconnect old client and create new one
+        old_client = self._client
+        if old_client is not None:
+            try:
+                if old_client.is_connected:
+                    self._submit(old_client.disconnect(), timeout=5)
+            except BaseException:
+                pass
+            self._client = None
+
+        # Connect fresh client
+        client = AsyncQuotexClient(
+            ssid=new_ssid,
+            is_demo=IS_DEMO,
+            enable_logging=False,
+            persistent_connection=False,
+            auto_reconnect=True,
+        )
+        ok = self._submit(client.connect(), timeout=CONNECT_TIMEOUT)
+        if not ok:
+            raise RuntimeError("Quotex rejected new SSID after Playwright login")
+
+        self._client = client
+        print(f"[quotex-bridge] reconnected via Playwright ({len(new_ssid)} chars)", flush=True)
+
+    def _cloudscraper_login(self) -> str:
+        """Login via cloudscraper (bypasses Cloudflare), returns new SSID string or None."""
+        import re as _re
+        import json as _json
+        import cloudscraper as _cs
+        from bs4 import BeautifulSoup as _BS
+
+        scraper = _cs.create_scraper()
+        login_url = f"{QX_BASE}/en/sign-in/"
+        target_url = f"{QX_BASE}/en/demo-trade" if IS_DEMO else f"{QX_BASE}/en/trade"
+
+        # 1. GET sign-in page, extract CSRF
+        resp = scraper.get(login_url, timeout=30, headers={"Referer": login_url})
+        soup = _BS(resp.text, "html.parser")
+        form = soup.select_one('#tab-1 form[action$="/sign-in/"]')
+        csrf = None
+        if form:
+            tok = form.select_one('input[name="_token"]')
+            if tok and tok.get("value"):
+                csrf = tok["value"]
+        if not csrf:
+            raise RuntimeError("cloudscraper: CSRF not found on sign-in page")
+
+        # 2. POST login
+        payload = {"_token": csrf, "email": EMAIL, "password": PASSWORD, "remember": "1"}
+        resp2 = scraper.post(
+            login_url, data=payload,
+            headers={"Referer": login_url, "Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30, allow_redirects=False,
+        )
+        if resp2.status_code in (301, 302, 303, 307, 308):
+            loc = resp2.headers.get("Location", "")
+            if loc:
+                next_url = loc if loc.startswith("http") else (QX_BASE + loc)
+                try:
+                    scraper.get(next_url, timeout=30)
+                except Exception:
+                    pass
+
+        # 3. GET trade page, extract token
+        resp3 = scraper.get(target_url, timeout=30, headers={"Referer": login_url})
+        token = None
+        for s in _BS(resp3.text, "html.parser").find_all("script"):
+            txt = (s.get_text() or "").strip()
+            if "window.settings" in txt:
+                try:
+                    j = _re.sub(r"^window\.settings\s*=\s*", "", txt.replace(";", ""))
+                    token = _json.loads(j).get("token")
+                    if token:
+                        break
+                except Exception:
+                    continue
+
+        # 4. Extract session cookie
+        cookies_dict = scraper.cookies.get_dict()
+        session_cookie = None
+        for k, v in cookies_dict.items():
+            if k.lower() in ("session", "ssid", "qx_session") and v:
+                session_cookie = v
+                break
+
+        # 5. Build SSID
+        ssid_source = session_cookie or token
+        if not ssid_source:
+            raise RuntimeError("cloudscraper: no token or session cookie after login")
+
+        ssid = f'42["authorization",{{"session":"{ssid_source}","isDemo":{1 if IS_DEMO else 0},"tournamentId":0}}]'
+
+        # 6. Update cookies for future refresh attempts
+        global COOKIES
+        COOKIES = "; ".join(f"{k}={v}" for k, v in cookies_dict.items())
+        print(f"[quotex-bridge] cloudscraper: got SSID ({len(ssid_source)} chars) and {len(cookies_dict)} cookies", flush=True)
+        return ssid
 
     def _refresh_loop(self):
         while True:
             time.sleep(REFRESH_INTERVAL)
-            self._refresh_once()
+            try:
+                # Check if connection is actually alive before refreshing
+                client = self._client
+                if client is not None and not client.is_connected:
+                    print("[quotex-bridge] connection lost, forcing full re-login...", flush=True)
+                    self._reconnect_via_login()
+                else:
+                    self._refresh_once()
+            except BaseException as exc:
+                print(f"[quotex-bridge] refresh loop error: {exc}", flush=True)
+                self._last_error = str(exc)
 
     def ensure_connected(self):
         now = time.time()
@@ -261,6 +505,14 @@ class QuotexBridge:
         assets = self._fetch_assets() or {}
         if assets:
             norm = {normalize(key): key for key in assets}
+            # If no _otc suffix was in the original id, try _otc FIRST
+            # (Quotex OTC markets are always open, even on weekends)
+            if not otc:
+                otc_candidates = [c + "_otc" for c in candidates]
+                for candidate in otc_candidates:
+                    key = normalize(candidate)
+                    if key in norm:
+                        return norm[key]
             for candidate in candidates:
                 key = normalize(candidate)
                 if key in norm:
