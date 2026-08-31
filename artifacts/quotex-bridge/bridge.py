@@ -22,9 +22,12 @@ Endpoints:
 
 import asyncio
 import json
+import logging
 import os
+import sys
 import threading
 import time
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -96,6 +99,25 @@ CONNECT_TIMEOUT = 25
 CANDLE_TIMEOUT = 15
 ASSETS_TIMEOUT = 15
 CONNECT_COOLDOWN = 20  # don't retry a failed connect within this many seconds
+
+# The first connect is the slow one (WebSocket handshake + auth + asset table),
+# so main() pays for it up front instead of making the first HTTP caller wait.
+WARMUP_TIMEOUT = 45
+# A dedicated thread re-checks the socket on this cadence, so a dropped
+# connection is repaired in the background rather than by an HTTP handler.
+WATCHDOG_INTERVAL = 15
+
+# ── Logging: stdout plus a file next to this script ───────────────
+LOG_FILE = Path(__file__).resolve().parent / "bridge-debug.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(threadName)s %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+log = logging.getLogger("quotex-bridge")
 
 
 def configured() -> bool:
@@ -431,12 +453,12 @@ class QuotexBridge:
                 session_cookie = v
                 break
 
-        # 5. Build SSID
+        # 5. Build SSID (raw session token only — the client library handles the WS auth framing)
         ssid_source = session_cookie or token
         if not ssid_source:
             raise RuntimeError("cloudscraper: no token or session cookie after login")
 
-        ssid = f'42["authorization",{{"session":"{ssid_source}","isDemo":{1 if IS_DEMO else 0},"tournamentId":0}}]'
+        ssid = ssid_source
 
         # 6. Update cookies for future refresh attempts
         global COOKIES
@@ -466,16 +488,21 @@ class QuotexBridge:
         if self._connect_fail_at and now - self._connect_fail_at < CONNECT_COOLDOWN:
             raise RuntimeError(self._connect_fail_msg or "Quotex connection recently failed.")
         try:
+            log.info("connecting to Quotex (demo=%s)…", IS_DEMO)
             client = self._submit(self._ensure_client(), timeout=CONNECT_TIMEOUT)
             self._connect_fail_at = 0.0
             self._connect_fail_msg = ""
+            log.info("connected to Quotex")
             # Kick off an immediate refresh so we always hold a young token.
             self._refresh_once()
             return client
         except BaseException as exc:
             self._client = None
             self._connect_fail_at = now
-            self._connect_fail_msg = str(exc)
+            # TimeoutError and CancelledError both stringify to "", which makes
+            # downstream messages useless — fall back to the class name.
+            self._connect_fail_msg = str(exc) or type(exc).__name__
+            log.warning("connect failed: %s\n%s", self._connect_fail_msg, traceback.format_exc())
             raise
 
     # ── assets (best-effort, cached) ───────────────────────────────
@@ -485,9 +512,46 @@ class QuotexBridge:
                 client = self.ensure_connected()
                 raw = self._submit(client.get_available_assets(), timeout=ASSETS_TIMEOUT)
                 self._assets = dict(raw) if isinstance(raw, dict) else {}
+                log.info("asset table loaded (%d instruments)", len(self._assets))
             except BaseException as exc:  # non-fatal: asset validation is best-effort
-                self._last_error = f"assets: {exc}"
+                self._last_error = f"assets: {exc or type(exc).__name__}"
+                log.warning("asset fetch failed: %s\n%s", self._last_error, traceback.format_exc())
         return self._assets
+
+    # ── keeping the socket warm ────────────────────────────────────
+    def warmup(self):
+        """Connect and load the asset table before the HTTP server accepts traffic."""
+        try:
+            self._submit(self._ensure_client(), timeout=WARMUP_TIMEOUT)
+            self._connect_fail_at = 0.0
+            self._connect_fail_msg = ""
+            raw = self._submit(self._client.get_available_assets(), timeout=ASSETS_TIMEOUT)
+            self._assets = dict(raw) if isinstance(raw, dict) else {}
+            self._last_error = ""
+            log.info("warmup complete — connected, %d instruments", len(self._assets))
+            return True
+        except BaseException as exc:
+            self._last_error = f"warmup: {exc or type(exc).__name__}"
+            log.warning("warmup failed: %s\n%s", self._last_error, traceback.format_exc())
+            return False
+
+    def watchdog_loop(self):
+        """Repair a dropped connection from a dedicated thread.
+
+        Without this, the first HTTP request after a drop pays the full connect
+        cost (and trips the cooldown for every request behind it).
+        """
+        while True:
+            time.sleep(WATCHDOG_INTERVAL)
+            try:
+                if self._client is None or not self._client.is_connected:
+                    log.info("watchdog: socket down, reconnecting")
+                    self._connect_fail_at = 0.0  # the interval is the rate limit
+                    self._submit(self._ensure_client(), timeout=CONNECT_TIMEOUT)
+                    self._assets = None
+                    self._fetch_assets()
+            except BaseException as exc:
+                log.warning("watchdog reconnect failed: %s", exc or type(exc).__name__)
 
     def resolve_asset(self, asset_id: str) -> str:
         """Map our pair id (e.g. ``eur_usd_otc``) to a Quotex instrument name."""
@@ -667,10 +731,16 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     if not configured():
-        print("[quotex-bridge] WARNING: no QUOTEX_SSID and no QUOTEX_EMAIL/QUOTEX_PASSWORD set "
-              "- bridge will report 'unavailable'.", flush=True)
+        log.warning("no QUOTEX_SSID and no QUOTEX_EMAIL/QUOTEX_PASSWORD set "
+                    "- bridge will report 'unavailable'.")
+    else:
+        # Connect from the main thread before serving: this is the code path that
+        # is known to work, and it means handler threads only ever see a live client.
+        BRIDGE.warmup()
+        threading.Thread(target=BRIDGE.watchdog_loop, name="quotex-watchdog",
+                         daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"[quotex-bridge] listening on http://{HOST}:{PORT}", flush=True)
+    log.info("listening on http://%s:%s (logging to %s)", HOST, PORT, LOG_FILE.name)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
